@@ -23,6 +23,10 @@ export interface Calibration {
   bodyScale: number;
   /** Nötr (ayakta) ayak bileği y — şutta gerçek ayak kalkışını ölçmek için. */
   standingAnkleY: number;
+  /** Kişisel sol eğilme aralığı (nötr - en sol). Yoksa ölçekten türetilir. */
+  leanRangeLeft?: number;
+  /** Kişisel sağ eğilme aralığı (en sağ - nötr). Yoksa ölçekten türetilir. */
+  leanRangeRight?: number;
 }
 
 /** Tek karelik ham örnek (kalibrasyon için). */
@@ -65,7 +69,6 @@ export class GestureDetector {
   private kickVelThreshold: number = GAME_CONFIG.gesture.kickVelThreshold;
   private cooldownFrames: number = GAME_CONFIG.gesture.kickCooldownFrames;
   private leanSmoothing: number = GAME_CONFIG.gesture.leanSmoothing;
-  private leanDelta: number = GAME_CONFIG.gesture.leanDelta;
 
   private cal: Calibration = {
     neutralLeanX: GAME_CONFIG.gesture.leanNeutral,
@@ -200,23 +203,29 @@ export class GestureDetector {
     };
   }
 
-  /** Köşe bölgesi: nötr merkezden sapmaya göre (kaleci için). */
+  /** Köşe bölgesi (kaleci bandı): kişisel nişan açısına göre. */
   private zoneFromLean(x: number): DiveZone {
-    const dev = x - this.cal.neutralLeanX;
-    if (dev < -this.leanDelta) return 'left';
-    if (dev > this.leanDelta) return 'right';
+    const a = this.aimFromLean(x);
+    const t = GAME_CONFIG.gesture.zoneAimThreshold;
+    if (a < -t) return 'left';
+    if (a > t) return 'right';
     return 'center';
   }
 
   /** Sürekli nişan: sapmayı [-1, 1] aralığına eşle.
-   * Kalibreliyken aralık vücut ölçeğine göre kişiselleşir (uzaktayken daha hassas). */
+   * Kalibreliyken kişisel sol/sağ eğilme aralığı (2. adım) kullanılır;
+   * yoksa vücut ölçeğinden türetilir. */
   private aimFromLean(x: number): number {
     const dev = x - this.cal.neutralLeanX;
-    const range = this.calibrated
-      ? GAME_CONFIG.gesture.leanRange *
-        (this.cal.bodyScale / GAME_CONFIG.gesture.referenceBodyScale)
-      : GAME_CONFIG.gesture.leanRange;
-    return Math.max(-1, Math.min(1, dev / range));
+    const scaled =
+      GAME_CONFIG.gesture.leanRange *
+      (this.cal.bodyScale / GAME_CONFIG.gesture.referenceBodyScale);
+    const fallback = this.calibrated ? scaled : GAME_CONFIG.gesture.leanRange;
+    const range =
+      dev >= 0
+        ? (this.cal.leanRangeRight ?? fallback)
+        : (this.cal.leanRangeLeft ?? fallback);
+    return Math.max(-1, Math.min(1, dev / Math.max(0.01, range)));
   }
 
   private visible(landmarks: PoseLandmarks, i: number): boolean {

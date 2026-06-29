@@ -85,6 +85,35 @@ describe('GestureDetector — sürekli nişan', () => {
     expect(right.aim).toBeCloseTo(1, 1);
   });
 
+  it('kişisel eğilme aralığı nişanı asimetrik ölçekler (2. adım kalibrasyon)', () => {
+    const cal = {
+      neutralLeanX: 0.5,
+      bodyScale: 0.45,
+      standingAnkleY: 0.95,
+      leanRangeRight: 0.1,
+      leanRangeLeft: 0.2,
+    };
+    const detR = new GestureDetector();
+    detR.setCalibration(cal);
+    // shoulder 0.4 -> mirrored 0.6 -> dev +0.1 / sağ aralık 0.1 -> ~+1
+    const right = feed(
+      detR,
+      makeLandmarks({ [L_SHOULDER]: { x: 0.4 }, [R_SHOULDER]: { x: 0.4 } }),
+      30
+    );
+    expect(right.aim).toBeCloseTo(1, 1);
+
+    const detL = new GestureDetector();
+    detL.setCalibration(cal);
+    // mirrored 0.4 -> dev -0.1 / sol aralık 0.2 -> ~-0.5
+    const left = feed(
+      detL,
+      makeLandmarks({ [L_SHOULDER]: { x: 0.6 }, [R_SHOULDER]: { x: 0.6 } }),
+      30
+    );
+    expect(left.aim).toBeCloseTo(-0.5, 1);
+  });
+
   it('az eğilme küçük açı verir (sürekli)', () => {
     // shoulder x 0.46 -> mirrored 0.54 -> dev +0.04 -> aim ~0.22
     const r = feed(

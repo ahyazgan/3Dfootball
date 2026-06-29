@@ -85,9 +85,12 @@ export class GameLoop {
   private keyKick = false;
   private shotZone: DiveZone = 'center';
 
-  // Kalibrasyon durumu
+  // Kalibrasyon durumu (2 adım: nötr + eğilme aralığı)
   private calibrating = false;
+  private calPhase: 'neutral' | 'range' = 'neutral';
   private calSamples: GestureSample[] = [];
+  private calMinX = 1;
+  private calMaxX = 0;
   private calEndMs = 0;
   private calResolve: ((ok: boolean) => void) | null = null;
 
@@ -191,14 +194,19 @@ export class GameLoop {
   }
 
   /**
-   * Kalibrasyon: oyuncu nötr dururken referans değerleri topla.
-   * Kamera yoksa hemen false döner. Yeterli örnek toplanırsa eşikleri uyarlar.
+   * 2 adımlı kişisel kalibrasyon:
+   *  1) Nötr dur — vücut ölçüleri (eğilme merkezi, bacak boyu, ayak referansı)
+   *  2) Sola-sağa yatır — kişisel maksimum eğilme aralığı (nişan kişiselleşir)
+   * Kamera yoksa hemen false döner.
    */
-  calibrate(durationMs = 2600): Promise<boolean> {
+  calibrate(): Promise<boolean> {
     if (!this.d.trackingEnabled || !this.d.pose.ready) return Promise.resolve(false);
     this.calSamples = [];
+    this.calMinX = 1;
+    this.calMaxX = 0;
+    this.calPhase = 'neutral';
     this.calibrating = true;
-    this.calEndMs = performance.now() + durationMs;
+    this.calEndMs = performance.now() + 2600;
     return new Promise((resolve) => {
       this.calResolve = resolve;
     });
@@ -208,32 +216,64 @@ export class GameLoop {
     const landmarks = this.d.pose.detect(now);
     this.d.skeleton.draw(landmarks);
     const sample = GestureDetector.sample(landmarks);
-    if (sample) this.calSamples.push(sample);
-
     const remainSec = Math.max(0, Math.ceil((this.calEndMs - now) / 1000));
-    this.d.hud.setCalibration(remainSec, GestureDetector.checklist(landmarks));
 
-    if (now >= this.calEndMs) {
-      this.calibrating = false;
-      this.d.hud.hideCalibration();
-      const ok = this.finalizeCalibration();
-      this.calResolve?.(ok);
-      this.calResolve = null;
+    if (this.calPhase === 'neutral') {
+      if (sample) this.calSamples.push(sample);
+      this.d.hud.setCalibration(remainSec, GestureDetector.checklist(landmarks));
+      if (now >= this.calEndMs) {
+        if (this.calSamples.length < 10) {
+          this.endCalibration(false); // yeterli veri yok
+        } else {
+          this.calPhase = 'range'; // 2. adıma geç
+          this.calEndMs = now + 3200;
+        }
+      }
+    } else {
+      // Eğilme aralığı: min/max aynalı omuz x'i izle
+      if (sample) {
+        this.calMinX = Math.min(this.calMinX, sample.mirroredX);
+        this.calMaxX = Math.max(this.calMaxX, sample.mirroredX);
+      }
+      this.d.hud.setCalibrationRange(
+        remainSec,
+        sample ? sample.mirroredX : null,
+        this.calMinX,
+        this.calMaxX
+      );
+      if (now >= this.calEndMs) {
+        this.applyCalibration();
+        this.endCalibration(true);
+      }
     }
   }
 
-  /** Toplanan örneklerin ortalamasını kalibrasyon olarak uygula. */
-  private finalizeCalibration(): boolean {
-    if (this.calSamples.length < 10) return false; // yeterli veri yok
+  private endCalibration(ok: boolean) {
+    this.calibrating = false;
+    this.d.hud.hideCalibration();
+    this.calResolve?.(ok);
+    this.calResolve = null;
+  }
+
+  /** Her iki adımın sonuçlarını birleştirip kalibrasyonu uygula. */
+  private applyCalibration() {
     const n = this.calSamples.length;
     const avg = (sel: (c: GestureSample) => number) =>
       this.calSamples.reduce((s, c) => s + sel(c), 0) / n;
+    const neutralLeanX = avg((c) => c.mirroredX);
+
+    // Kişisel eğilme aralığı (anlamlıysa kullan)
+    const min = GAME_CONFIG.gesture.minLeanRange;
+    const rRight = this.calMaxX - neutralLeanX;
+    const rLeft = neutralLeanX - this.calMinX;
+
     this.d.gesture.setCalibration({
-      neutralLeanX: avg((c) => c.mirroredX),
+      neutralLeanX,
       bodyScale: avg((c) => c.bodyScale),
       standingAnkleY: avg((c) => c.standingAnkleY),
+      leanRangeRight: rRight > min ? rRight : undefined,
+      leanRangeLeft: rLeft > min ? rLeft : undefined,
     });
-    return true;
   }
 
   private frame = (now: number) => {

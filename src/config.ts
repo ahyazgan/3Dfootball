@@ -36,8 +36,12 @@ export const GAME_CONFIG = {
     /** Kalibreliyken: ayak, bacak boyunun bu oranı kadar gerçekten kalkmalı
      * (sadece-ayak şutu; yerde titreme tetiklemesin). */
     kickRiseFrac: 0.16,
-    /** Sürekli nişan: bu sapmada açı ±1'e doyar (tam eğilme). */
+    /** Sürekli nişan: bu sapmada açı ±1'e doyar (tam eğilme, kalibrasyonsuz). */
     leanRange: 0.18,
+    /** Nişan açısı |bu| değeri aşınca kaleci bandı sol/sağ olur. */
+    zoneAimThreshold: 0.45,
+    /** Kişisel eğilme aralığının anlamlı sayılması için minimum sapma. */
+    minLeanRange: 0.05,
     /** Çift tetiklemeyi önleyen kare sayısı. */
     kickCooldownFrames: 30,
     /** Hızı 0..1 güce eşlerken kullanılan eşik çarpanı. */

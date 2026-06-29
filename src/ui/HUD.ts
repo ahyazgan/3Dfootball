@@ -115,6 +115,15 @@ export class HUD {
       border:1px solid rgba(255,255,255,.18)}
     .cal-list .chip.ok{background:rgba(43,214,106,.22);color:#9bf3bf;border-color:#2bd66a}
     .cal-list .chip.no{background:rgba(255,106,77,.18);color:#ffb3a3;border-color:#ff6a4d}
+    .cal-bar{position:relative;width:min(78%,360px);height:34px;margin-top:6px}
+    .cal-bar-track{position:absolute;top:14px;left:0;right:0;height:6px;border-radius:6px;
+      background:rgba(255,255,255,.18)}
+    .cal-range{position:absolute;top:13px;height:8px;border-radius:6px;
+      background:linear-gradient(90deg,#3bd,#2bd66a)}
+    .cal-dot{position:absolute;top:8px;width:18px;height:18px;border-radius:50%;
+      background:#fff;box-shadow:0 0 12px #2bd66a;transform:translateX(-9px)}
+    .cal-end{position:absolute;top:24px;font-size:11px;font-weight:700;color:#9fe0b0}
+    .cal-end.l{left:0}.cal-end.r{right:0}
     .hidden{display:none!important}
     `;
     const style = document.createElement('style');
@@ -228,6 +237,33 @@ export class HUD {
       <div class="sub">Kameranın karşısında <b>düz dur</b> — vücut ölçülerin alınıyor
       (ayağınla şut atacaksın, bu yüzden <b>ayakların görünmeli</b>).</div>
       <div class="cal-list">${rows}</div>
+    `;
+  }
+
+  /** Kalibrasyon 2. adım: eğilme aralığı (sola-sağa yatır). */
+  setCalibrationRange(
+    secondsLeft: number,
+    leanX: number | null,
+    minX: number,
+    maxX: number
+  ) {
+    this.calEl.classList.remove('hidden');
+    const pct = (v: number) => `${Math.round(Math.max(0, Math.min(1, v)) * 100)}%`;
+    const dot =
+      leanX === null ? '' : `<div class="cal-dot" style="left:${pct(leanX)}"></div>`;
+    const range =
+      maxX > minX
+        ? `<div class="cal-range" style="left:${pct(minX)};width:${pct(maxX - minX)}"></div>`
+        : '';
+    this.calEl.innerHTML = `
+      <div class="title">Kalibrasyon · 2/2</div>
+      <div class="count">${secondsLeft}</div>
+      <div class="sub">Şimdi vücudunu <b>sola ve sağa yatır</b> —
+      nişan aralığın ölçülüyor.</div>
+      <div class="cal-bar">
+        <div class="cal-bar-track"></div>${range}${dot}
+        <span class="cal-end l">SOL</span><span class="cal-end r">SAĞ</span>
+      </div>
     `;
   }
 
