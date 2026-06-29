@@ -226,9 +226,13 @@ export class GameLoop {
   private finalizeCalibration(): boolean {
     if (this.calSamples.length < 10) return false; // yeterli veri yok
     const n = this.calSamples.length;
-    const neutralLeanX = this.calSamples.reduce((s, c) => s + c.mirroredX, 0) / n;
-    const bodyScale = this.calSamples.reduce((s, c) => s + c.bodyScale, 0) / n;
-    this.d.gesture.setCalibration({ neutralLeanX, bodyScale });
+    const avg = (sel: (c: GestureSample) => number) =>
+      this.calSamples.reduce((s, c) => s + sel(c), 0) / n;
+    this.d.gesture.setCalibration({
+      neutralLeanX: avg((c) => c.mirroredX),
+      bodyScale: avg((c) => c.bodyScale),
+      standingAnkleY: avg((c) => c.standingAnkleY),
+    });
     return true;
   }
 

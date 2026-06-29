@@ -185,7 +185,7 @@ describe('GestureDetector — kalibrasyon kontrol listesi', () => {
 describe('GestureDetector — kalibrasyon', () => {
   it('nötr merkez kayınca o kişi için orta sayılır', () => {
     const det = new GestureDetector();
-    det.setCalibration({ neutralLeanX: 0.35, bodyScale: 0.45 });
+    det.setCalibration({ neutralLeanX: 0.35, bodyScale: 0.45, standingAnkleY: 0.95 });
     const lm = makeLandmarks({ [L_SHOULDER]: { x: 0.65 }, [R_SHOULDER]: { x: 0.65 } });
     const r = feed(det, lm, 30);
     expect(r.zone).toBe('center');
@@ -193,10 +193,27 @@ describe('GestureDetector — kalibrasyon', () => {
 
   it('kalibre vücut ölçeği şut eşiğini ölçekler (büyük ölçek = zorlaşır)', () => {
     const near = new GestureDetector();
-    near.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.9 }); // 2x eşik
+    near.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.9, standingAnkleY: 0.95 });
     near.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
     const r = near.update(legs({ lAnkle: 0.83, rAnkle: 0.83, lKnee: 0.63, rKnee: 0.63 }));
     expect(r.kick).toBe(false); // upVel 0.07 < eşik 0.09
+  });
+
+  it('kalibreliyken ayak yeterince kalkmazsa şut yok (sadece-ayak şutu)', () => {
+    const det = new GestureDetector();
+    det.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.4, standingAnkleY: 0.95 });
+    // minLift = 0.16*0.4 = 0.064; ayak nötre yakın kalır
+    det.update(legs({ lAnkle: 0.95, rAnkle: 0.95, lKnee: 0.75, rKnee: 0.75 }));
+    const r = det.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
+    expect(r.kick).toBe(false); // hız var ama gerçek kalkış yok
+  });
+
+  it('kalibreliyken ayak gerçekten kalkınca şut tetiklenir', () => {
+    const det = new GestureDetector();
+    det.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.4, standingAnkleY: 0.95 });
+    det.update(legs({ lAnkle: 0.95, rAnkle: 0.95, lKnee: 0.75, rKnee: 0.75 }));
+    const r = det.update(legs({ lAnkle: 0.83, rAnkle: 0.83, lKnee: 0.63, rKnee: 0.63 }));
+    expect(r.kick).toBe(true); // kalkış 0.12 > 0.064
   });
 });
 

@@ -225,8 +225,8 @@ export class HUD {
     this.calEl.innerHTML = `
       <div class="title">Kalibrasyon</div>
       <div class="count">${secondsLeft}</div>
-      <div class="sub">Kameranın karşısında <b>düz dur</b> — yeşil iskelet seni izliyor.
-      Tüm vücudun (ayaklar dahil) görünsün.</div>
+      <div class="sub">Kameranın karşısında <b>düz dur</b> — vücut ölçülerin alınıyor
+      (ayağınla şut atacaksın, bu yüzden <b>ayakların görünmeli</b>).</div>
       <div class="cal-list">${rows}</div>
     `;
   }

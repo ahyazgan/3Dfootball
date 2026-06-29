@@ -15,18 +15,21 @@ const R_ANKLE = 28;
 
 export type Foot = 'left' | 'right';
 
-/** Kameraya/oyuncuya göre referans değerler. */
+/** Kameraya/oyuncuya göre referans değerler (kişisel vücut kalibrasyonu). */
 export interface Calibration {
   /** Nötr duruşta aynalı omuz-orta x. */
   neutralLeanX: number;
-  /** Vücut ölçeği (kalça-ayak mesafesi, normalize) — eşik ölçeklemesi için. */
+  /** Bacak boyu (kalça-ayak mesafesi, normalize) — eşik/açı ölçeklemesi için. */
   bodyScale: number;
+  /** Nötr (ayakta) ayak bileği y — şutta gerçek ayak kalkışını ölçmek için. */
+  standingAnkleY: number;
 }
 
 /** Tek karelik ham örnek (kalibrasyon için). */
 export interface GestureSample {
   mirroredX: number;
   bodyScale: number;
+  standingAnkleY: number;
 }
 
 export interface GestureState {
@@ -67,7 +70,9 @@ export class GestureDetector {
   private cal: Calibration = {
     neutralLeanX: GAME_CONFIG.gesture.leanNeutral,
     bodyScale: GAME_CONFIG.gesture.referenceBodyScale,
+    standingAnkleY: 1,
   };
+  private calibrated = false;
 
   private leanFilter = new OneEuroFilter(
     GAME_CONFIG.gesture.oneEuro.minCutoff,
@@ -89,9 +94,10 @@ export class GestureDetector {
     this.kickVelThreshold = v;
   }
 
-  /** Kalibrasyon değerlerini ayarla. */
+  /** Kişisel vücut kalibrasyonunu ayarla. */
   setCalibration(cal: Calibration) {
     this.cal = cal;
+    this.calibrated = true;
     this.smoothLeanX = cal.neutralLeanX;
     this.leanFilter.reset();
   }
@@ -131,10 +137,12 @@ export class GestureDetector {
     const zone = this.zoneFromLean(this.smoothLeanX);
     const aim = this.aimFromLean(this.smoothLeanX);
 
-    // --- Şut: iki ayak ayrı, diz desteğiyle ---
+    // --- Şut: SADECE AYAK. İki ayak ayrı, diz desteği + gerçek kalkış ---
+    // Eşik kişinin bacak boyuna göre ölçeklenir (kişisel kalibrasyon).
     const scale = this.cal.bodyScale / GAME_CONFIG.gesture.referenceBodyScale;
     const effThreshold = this.kickVelThreshold * scale;
     const kneeMin = effThreshold * GAME_CONFIG.gesture.kickKneeRatio;
+    const minLift = GAME_CONFIG.gesture.kickRiseFrac * this.cal.bodyScale;
     const mul = GAME_CONFIG.gesture.powerRangeMul;
 
     const lAnkle = landmarks[L_ANKLE].y;
@@ -144,6 +152,9 @@ export class GestureDetector {
     // Diz güvenilir değilse (görünmüyorsa) diz kapısını atla
     const kneeReliable =
       this.visible(landmarks, L_KNEE) && this.visible(landmarks, R_KNEE);
+    // Kalibreliyken: ayak nötr duruştan yeterince KALKMIŞ olmalı (gerçek şut)
+    const lLiftOk = !this.calibrated || this.cal.standingAnkleY - lAnkle > minLift;
+    const rLiftOk = !this.calibrated || this.cal.standingAnkleY - rAnkle > minLift;
 
     let kick = false;
     let kickFoot: Foot | null = null;
@@ -157,8 +168,10 @@ export class GestureDetector {
       const rKneeUp = this.prevRKnee - rKnee;
       kickCharge = Math.max(0, Math.min(1, Math.max(lUp, rUp) / (effThreshold * mul)));
 
-      const lValid = lUp > effThreshold && (!kneeReliable || lKneeUp > kneeMin);
-      const rValid = rUp > effThreshold && (!kneeReliable || rKneeUp > kneeMin);
+      const lValid =
+        lUp > effThreshold && (!kneeReliable || lKneeUp > kneeMin) && lLiftOk;
+      const rValid =
+        rUp > effThreshold && (!kneeReliable || rKneeUp > kneeMin) && rLiftOk;
 
       if (this.cooldown === 0 && (lValid || rValid)) {
         kick = true;
@@ -195,11 +208,15 @@ export class GestureDetector {
     return 'center';
   }
 
-  /** Sürekli nişan: sapmayı [-1, 1] aralığına eşle. */
+  /** Sürekli nişan: sapmayı [-1, 1] aralığına eşle.
+   * Kalibreliyken aralık vücut ölçeğine göre kişiselleşir (uzaktayken daha hassas). */
   private aimFromLean(x: number): number {
     const dev = x - this.cal.neutralLeanX;
-    const a = dev / GAME_CONFIG.gesture.leanRange;
-    return Math.max(-1, Math.min(1, a));
+    const range = this.calibrated
+      ? GAME_CONFIG.gesture.leanRange *
+        (this.cal.bodyScale / GAME_CONFIG.gesture.referenceBodyScale)
+      : GAME_CONFIG.gesture.leanRange;
+    return Math.max(-1, Math.min(1, dev / range));
   }
 
   private visible(landmarks: PoseLandmarks, i: number): boolean {
@@ -272,6 +289,6 @@ export class GestureDetector {
     const hipY = (landmarks[L_HIP].y + landmarks[R_HIP].y) / 2;
     const ankleY = (landmarks[L_ANKLE].y + landmarks[R_ANKLE].y) / 2;
     const bodyScale = Math.max(0.05, Math.abs(ankleY - hipY));
-    return { mirroredX, bodyScale };
+    return { mirroredX, bodyScale, standingAnkleY: ankleY };
   }
 }

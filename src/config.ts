@@ -33,6 +33,9 @@ export const GAME_CONFIG = {
     kickVelThreshold: 0.045,
     /** Şutun geçerli sayılması için dizin de yükselme oranı (yanlış tetik önler). */
     kickKneeRatio: 0.3,
+    /** Kalibreliyken: ayak, bacak boyunun bu oranı kadar gerçekten kalkmalı
+     * (sadece-ayak şutu; yerde titreme tetiklemesin). */
+    kickRiseFrac: 0.16,
     /** Sürekli nişan: bu sapmada açı ±1'e doyar (tam eğilme). */
     leanRange: 0.18,
     /** Çift tetiklemeyi önleyen kare sayısı. */
