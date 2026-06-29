@@ -6,7 +6,8 @@ ile App Store / Google Play'e paketlenebilir.
 
 ## 🎮 Nasıl Oynanır
 
-1. **BAŞLA**'ya bas, kamera iznini ver.
+1. **BAŞLA**'ya bas, kamera iznini ver. Kısa bir **kalibrasyon** açılır:
+   düz dur, tüm vücudun görünsün (eşikler sana/mesafene göre ayarlanır).
 2. **Vücudunu sağa/sola eğ** → kalede köşe seç (SOL / ORTA / SAĞ).
 3. **Bacağını hızla öne/yukarı savur** → top o yöne fırlar. Ne kadar hızlı, o kadar sert.
 4. Kaleci rastgele dalış yapar; bazen yönünü doğru tahmin eder.

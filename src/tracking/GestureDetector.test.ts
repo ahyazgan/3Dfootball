@@ -117,12 +117,48 @@ describe('GestureDetector — şut (bacak savurma)', () => {
   });
 });
 
+describe('GestureDetector — kalibrasyon', () => {
+  it('nötr merkez kayınca o kişi için orta sayılır', () => {
+    const det = new GestureDetector();
+    // Bu kişinin nötr duruşu aynalı x ~0.35 (kameraya göre solda durur)
+    det.setCalibration({ neutralLeanX: 0.35, bodyScale: 0.45 });
+    // Aynı 0.35 civarında dururken (shoulder x = 0.65 -> mirrored 0.35) -> orta
+    const lm = makeLandmarks({ [L_SHOULDER]: { x: 0.65 }, [R_SHOULDER]: { x: 0.65 } });
+    const r = feed(det, lm, 30);
+    expect(r.zone).toBe('center');
+  });
+
+  it('kalibre vücut ölçeği şut eşiğini ölçekler (büyük ölçek = zorlaşır)', () => {
+    // Yakın oyuncu (büyük ölçek) -> eşik yükselir -> aynı hareket tetiklemez
+    const near = new GestureDetector();
+    near.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.9 }); // refScale 0.45 -> 2x eşik
+    near.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 }, [R_ANKLE]: { y: 0.9 } }));
+    const r = near.update(
+      makeLandmarks({ [L_ANKLE]: { y: 0.83 }, [R_ANKLE]: { y: 0.83 } })
+    );
+    // upVel 0.07; eşik 0.045*2=0.09 -> tetiklenmez
+    expect(r.kick).toBe(false);
+  });
+});
+
 describe('GestureDetector — sağlamlık', () => {
   it('landmark yokken güvenli varsayılan döndürür', () => {
     const det = new GestureDetector();
     const r = det.update(null);
     expect(r.kick).toBe(false);
+    expect(r.tracked).toBe(false);
     expect(['left', 'center', 'right']).toContain(r.zone);
+  });
+
+  it('anahtar nokta görünmüyorsa takip edilmedi sayılır, şut yok', () => {
+    const det = new GestureDetector();
+    det.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 }, [R_ANKLE]: { y: 0.9 } }));
+    // Omuz görünürlüğü düşük -> tracked false
+    const lm = makeLandmarks({ [L_ANKLE]: { y: 0.6 }, [R_ANKLE]: { y: 0.6 } });
+    (lm[11] as { visibility: number }).visibility = 0.1;
+    const r = det.update(lm);
+    expect(r.tracked).toBe(false);
+    expect(r.kick).toBe(false);
   });
 
   it('eksik landmark dizisi (33 altı) şut tetiklemez', () => {

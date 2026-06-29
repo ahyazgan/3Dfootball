@@ -56,11 +56,6 @@ async function main() {
     hud.hideOverlay();
     // Ses motorunu kullanıcı hareketiyle başlat ve başlangıç düdüğü çal
     await sound.init().catch(() => {});
-    sound.playWhistle();
-    state.start();
-    game.newGame();
-    hud.updateStats(state);
-    hud.setStatus('Köşeyi seç, bacağını savur!');
 
     // Kamera/poz henüz başlamadıysa başlatmayı dene
     if (!pose.ready && !trackingError) {
@@ -68,13 +63,27 @@ async function main() {
         hud.setStatus('Kamera başlatılıyor...');
         await pose.init();
         game.setTrackingEnabled(true);
-        hud.setStatus('Köşeyi seç, bacağını savur!');
       } catch (err) {
         console.warn('Poz takibi başlatılamadı:', err);
         trackingError = 'Kamera/poz takibi başlatılamadı. Klavye ile oynayabilirsin.';
-        hud.setStatus('Klavye: ← → yön, BOŞLUK şut');
       }
     }
+
+    // Kamera varsa kalibrasyon yap (nötr poz referansı)
+    if (pose.ready) {
+      const ok = await game.calibrate();
+      if (!ok) {
+        hud.setStatus('Kalibrasyon atlandı — yine de oynayabilirsin');
+      }
+    }
+
+    sound.playWhistle();
+    state.start();
+    game.newGame();
+    hud.updateStats(state);
+    hud.setStatus(
+      trackingError ? 'Klavye: ← → yön, BOŞLUK şut' : 'Köşeyi seç, bacağını savur!'
+    );
   };
 
   hud.showStartScreen(trackingError);

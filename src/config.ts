@@ -9,10 +9,10 @@ export const GAME_CONFIG = {
 
   /** Hareket algılama eşikleri (GestureDetector). */
   gesture: {
-    /** Aynalı omuz x'i bunun altındaysa sol köşe. */
-    leftThreshold: 0.42,
-    /** Aynalı omuz x'i bunun üstündeyse sağ köşe. */
-    rightThreshold: 0.58,
+    /** Eğilme merkezi (aynalı omuz x). Kalibrasyon bunu kişiye göre ezer. */
+    leanNeutral: 0.5,
+    /** Köşe seçimi için merkezden gereken sapma (±). 0.5±0.08 = 0.42/0.58. */
+    leanDelta: 0.08,
     /** Eğilme yumuşatması: önceki değerin ağırlığı (0..1). */
     leanSmoothing: 0.8,
     /** Ayak bileği yukarı hızı bu eşiği geçince şut tetiklenir. */
@@ -23,6 +23,10 @@ export const GAME_CONFIG = {
     powerRangeMul: 2.5,
     /** Bu görünürlüğün altındaki landmark'lar güvenilmez sayılır. */
     minVisibility: 0.5,
+    /** Şut eşiğini ölçekleyen referans vücut boyu (kalça-ayak, normalize). */
+    referenceBodyScale: 0.45,
+    /** One-Euro filtre parametreleri (eğilme sinyali). */
+    oneEuro: { minCutoff: 1.2, beta: 0.03, dCutoff: 1.0 },
   },
 
   /** Kaleci yapay zekâsı (KeeperAI). */

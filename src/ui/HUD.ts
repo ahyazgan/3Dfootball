@@ -16,6 +16,8 @@ export class HUD {
   private overlay!: HTMLElement;
 
   private muteBtn!: HTMLElement;
+  private warnEl!: HTMLElement;
+  private calEl!: HTMLElement;
   private muted = false;
 
   onStart: () => void = () => {};
@@ -74,6 +76,18 @@ export class HUD {
       background:rgba(6,26,14,.62);backdrop-filter:blur(6px);color:#fff;font-size:20px;
       display:flex;align-items:center;justify-content:center}
     .mute-btn:active{transform:scale(.94)}
+    .warn{position:absolute;top:140px;left:0;right:0;text-align:center;
+      font-size:16px;font-weight:700;color:#ffd24d;text-shadow:0 2px 8px #000;
+      pointer-events:none}
+    .cal{position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:14px;text-align:center;
+      background:radial-gradient(ellipse at center,rgba(6,26,14,.55),rgba(3,10,6,.8));
+      pointer-events:none;padding:24px}
+    .cal .title{font-size:24px;font-weight:800;color:#fff;text-shadow:0 2px 8px #000}
+    .cal .count{font-size:72px;font-weight:900;color:#2bd66a;line-height:1}
+    .cal .sub{font-size:15px;color:#bfe;max-width:380px;line-height:1.5}
+    .cal .ok{color:#2bd66a;font-weight:700}
+    .cal .no{color:#ff6a4d;font-weight:700}
     .hidden{display:none!important}
     `;
     const style = document.createElement('style');
@@ -97,6 +111,8 @@ export class HUD {
       <div class="power-label">GÜÇ</div>
       <div class="power-wrap"><div class="power-fill" id="power-fill"></div></div>
       <button class="mute-btn" id="mute-btn" title="Ses aç/kapat">🔊</button>
+      <div class="warn hidden" id="warn">⚠️ Vücudun kadrajda değil — geri çekil</div>
+      <div class="cal hidden" id="cal"></div>
       <div id="overlay"></div>
     `;
     this.goalsEl = q('#s-goals');
@@ -110,6 +126,8 @@ export class HUD {
       right: q('#z-right'),
     };
     this.overlay = q('#overlay');
+    this.warnEl = q('#warn');
+    this.calEl = q('#cal');
     this.muteBtn = q('#mute-btn');
     this.muteBtn.addEventListener('click', () => {
       this.muted = !this.muted;
@@ -134,6 +152,29 @@ export class HUD {
   hideOverlay() {
     this.overlay.className = 'overlay hidden';
     this.overlay.innerHTML = '';
+  }
+
+  /** "Kadrajda değilsin" uyarısını göster/gizle. */
+  setWarning(show: boolean) {
+    this.warnEl.classList.toggle('hidden', !show);
+  }
+
+  /** Kalibrasyon ekranı: geri sayım + algılama durumu. */
+  setCalibration(secondsLeft: number, detected: boolean) {
+    this.calEl.classList.remove('hidden');
+    this.calEl.innerHTML = `
+      <div class="title">Kalibrasyon</div>
+      <div class="count">${secondsLeft}</div>
+      <div class="sub">Kameranın karşısında <b>düz dur</b>, tüm vücudun görünsün.
+      <br/><span class="${detected ? 'ok' : 'no'}">${
+        detected ? '✓ Algılandı' : '✗ Vücut bulunamadı'
+      }</span></div>
+    `;
+  }
+
+  hideCalibration() {
+    this.calEl.classList.add('hidden');
+    this.calEl.innerHTML = '';
   }
 
   showEndScreen(state: GameState) {

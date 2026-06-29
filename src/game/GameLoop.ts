@@ -6,7 +6,7 @@ import { Goal, GOAL_LINE_Z, GOAL_HEIGHT, GOAL_WIDTH } from '../scene/Goal';
 import { Keeper, type DiveZone } from '../scene/Keeper';
 import { Ball } from '../scene/Ball';
 import { PoseTracker } from '../tracking/PoseTracker';
-import { GestureDetector } from '../tracking/GestureDetector';
+import { GestureDetector, type GestureSample } from '../tracking/GestureDetector';
 import { SkeletonRenderer } from '../ui/Skeleton';
 import { HUD } from '../ui/HUD';
 import { SoundManager } from '../audio/SoundManager';
@@ -56,6 +56,12 @@ export class GameLoop {
   // Klavye yedeği (kamerasız test)
   private keyZone: DiveZone = 'center';
   private keyKick = false;
+
+  // Kalibrasyon durumu
+  private calibrating = false;
+  private calSamples: GestureSample[] = [];
+  private calEndMs = 0;
+  private calResolve: ((ok: boolean) => void) | null = null;
 
   constructor(deps: GameDeps) {
     this.d = deps;
@@ -125,6 +131,48 @@ export class GameLoop {
     this.ball.reset();
   }
 
+  /**
+   * Kalibrasyon: oyuncu nötr dururken referans değerleri topla.
+   * Kamera yoksa hemen false döner. Yeterli örnek toplanırsa eşikleri uyarlar.
+   */
+  calibrate(durationMs = 2600): Promise<boolean> {
+    if (!this.d.trackingEnabled || !this.d.pose.ready) return Promise.resolve(false);
+    this.calSamples = [];
+    this.calibrating = true;
+    this.calEndMs = performance.now() + durationMs;
+    return new Promise((resolve) => {
+      this.calResolve = resolve;
+    });
+  }
+
+  private handleCalibration(now: number) {
+    const landmarks = this.d.pose.detect(now);
+    this.d.skeleton.draw(landmarks);
+    const sample = GestureDetector.sample(landmarks);
+    if (sample) this.calSamples.push(sample);
+
+    const remainSec = Math.max(0, Math.ceil((this.calEndMs - now) / 1000));
+    this.d.hud.setCalibration(remainSec, sample !== null);
+
+    if (now >= this.calEndMs) {
+      this.calibrating = false;
+      this.d.hud.hideCalibration();
+      const ok = this.finalizeCalibration();
+      this.calResolve?.(ok);
+      this.calResolve = null;
+    }
+  }
+
+  /** Toplanan örneklerin ortalamasını kalibrasyon olarak uygula. */
+  private finalizeCalibration(): boolean {
+    if (this.calSamples.length < 10) return false; // yeterli veri yok
+    const n = this.calSamples.length;
+    const neutralLeanX = this.calSamples.reduce((s, c) => s + c.mirroredX, 0) / n;
+    const bodyScale = this.calSamples.reduce((s, c) => s + c.bodyScale, 0) / n;
+    this.d.gesture.setCalibration({ neutralLeanX, bodyScale });
+    return true;
+  }
+
   private frame = (now: number) => {
     const dt = Math.min((now - this.lastTime) / 1000, 1 / 30);
     this.lastTime = now;
@@ -137,18 +185,26 @@ export class GameLoop {
   private update(now: number, dt: number) {
     const { state, gesture, hud } = this.d;
 
+    // Kalibrasyon modu her şeyin önündedir
+    if (this.calibrating) {
+      this.handleCalibration(now);
+      return;
+    }
+
     // --- Giriş: hareket veya klavye ---
     let zone: DiveZone = this.keyZone;
     let kick = false;
     let power = 0.7;
     let charge = 0;
+    let tracked = true;
 
     if (this.d.trackingEnabled && this.d.pose.ready) {
       const landmarks = this.d.pose.detect(now);
       this.d.skeleton.draw(landmarks);
-      const g = gesture.update(landmarks);
+      const g = gesture.update(landmarks, now);
       zone = g.zone;
       charge = g.kickCharge;
+      tracked = g.tracked;
       if (g.kick) {
         kick = true;
         power = g.power;
@@ -160,11 +216,15 @@ export class GameLoop {
       this.keyKick = false;
     }
 
+    // Kadrajda değilse uyar (klavye girişini engellemez)
+    const showWarn = this.d.trackingEnabled && !tracked && state.phase === 'ready';
+    hud.setWarning(showWarn);
+
     // --- Faz makinesi ---
     if (state.phase === 'ready') {
       hud.setActiveZone(zone);
       hud.setPower(charge);
-      hud.setStatus('Köşeyi seç, bacağını savur!');
+      if (!showWarn) hud.setStatus('Köşeyi seç, bacağını savur!');
       if (kick) this.shoot(zone, power);
     } else if (state.phase === 'shooting') {
       this.shotElapsed += dt;
