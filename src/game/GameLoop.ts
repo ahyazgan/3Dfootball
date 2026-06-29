@@ -5,6 +5,8 @@ import { Stadium } from '../scene/Stadium';
 import { Goal, GOAL_LINE_Z, GOAL_HEIGHT, GOAL_WIDTH } from '../scene/Goal';
 import { Keeper, type DiveZone } from '../scene/Keeper';
 import { Ball } from '../scene/Ball';
+import { BallTrail } from '../scene/BallTrail';
+import { Confetti } from '../scene/Confetti';
 import { PoseTracker } from '../tracking/PoseTracker';
 import { GestureDetector, type GestureSample } from '../tracking/GestureDetector';
 import { SkeletonRenderer } from '../ui/Skeleton';
@@ -45,6 +47,8 @@ export class GameLoop {
   private keeper = new Keeper();
   private keeperAI = new KeeperAI();
   private ball: Ball;
+  private trail = new BallTrail();
+  private confetti = new Confetti();
 
   private d: GameDeps;
 
@@ -91,6 +95,9 @@ export class GameLoop {
     this.goal.addTo(this.scene);
     this.keeper.addTo(this.scene);
     this.ball.addTo(this.scene);
+    this.trail.addTo(this.scene);
+    this.confetti.addTo(this.scene);
+    this.trail.reset(this.ball.position());
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -140,6 +147,7 @@ export class GameLoop {
     this.keeperAI.reset();
     this.keeper.reset();
     this.ball.reset();
+    this.trail.reset(this.ball.position());
   }
 
   /**
@@ -258,6 +266,10 @@ export class GameLoop {
     }
     this.ball.sync();
     this.keeper.update(dt);
+
+    // Görsel efektler
+    this.trail.update(this.ball.position(), inFlight);
+    this.confetti.update(dt);
   }
 
   private shoot(zone: DiveZone, power: number) {
@@ -345,6 +357,7 @@ export class GameLoop {
     if (result === 'goal') {
       this.d.sound.playGoal();
       if (state.lastGoalScore) hud.flashGoalScore(state.lastGoalScore);
+      this.confetti.burst(pos);
     } else if (result === 'save') this.d.sound.playSave();
     else this.d.sound.playMiss();
     hud.flashResult(result);
@@ -358,6 +371,7 @@ export class GameLoop {
   private finishResult() {
     const { state, hud, gesture } = this.d;
     this.ball.reset();
+    this.trail.reset(this.ball.position());
     this.keeper.reset();
     gesture.reset();
     state.next();
