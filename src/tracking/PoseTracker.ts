@@ -1,8 +1,4 @@
-import {
-  FilesetResolver,
-  PoseLandmarker,
-  type NormalizedLandmark,
-} from '@mediapipe/tasks-vision';
+import type { PoseLandmarker, NormalizedLandmark } from '@mediapipe/tasks-vision';
 
 const WASM_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
 const MODEL_URL =
@@ -25,8 +21,10 @@ export class PoseTracker {
     this.video = video;
   }
 
-  /** Modeli ve kamerayı başlat. Kamera izni burada istenir. */
+  /** Modeli ve kamerayı başlat. Kamera izni burada istenir.
+   * MediaPipe yalnızca burada (dinamik import ile) yüklenir — ilk açılışı hızlandırır. */
   async init(): Promise<void> {
+    const { FilesetResolver, PoseLandmarker } = await import('@mediapipe/tasks-vision');
     const vision = await FilesetResolver.forVisionTasks(WASM_BASE);
     this.landmarker = await PoseLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },

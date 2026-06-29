@@ -1,5 +1,3 @@
-import RAPIER from '@dimforge/rapier3d-compat';
-
 import { GameState } from './game/GameState';
 import { GameLoop } from './game/GameLoop';
 import { ScoreStore } from './game/ScoreStore';
@@ -15,7 +13,8 @@ async function main() {
   const video = document.getElementById('camera') as HTMLVideoElement;
   const hudRoot = document.getElementById('hud') as HTMLElement;
 
-  // --- Fizik dünyası (Rapier) ---
+  // --- Fizik dünyası (Rapier) — dinamik import ile ayrı parça ---
+  const RAPIER = (await import('@dimforge/rapier3d-compat')).default;
   await RAPIER.init();
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
 
