@@ -50,8 +50,10 @@ export const GAME_CONFIG = {
     autoRecalMs: 4000,
     /** Çift tetiklemeyi önleyen kare sayısı. */
     kickCooldownFrames: 30,
-    /** Hızı 0..1 güce eşlerken kullanılan eşik çarpanı. */
+    /** Hızı 0..1 güce eşlerken kullanılan eşik çarpanı (varsayılan tepe hız). */
     powerRangeMul: 2.5,
+    /** En düşük şut gücü (çok hafif vuruşta bile). */
+    minPower: 0.25,
     /** Bu görünürlüğün altındaki landmark'lar güvenilmez sayılır. */
     minVisibility: 0.5,
     /** Şut eşiğini ölçekleyen referans vücut boyu (kalça-ayak, normalize). */

@@ -177,6 +177,26 @@ describe('GestureDetector — şut (bacak savurma)', () => {
     expect(fastR.power).toBeLessThanOrEqual(1);
   });
 
+  it('güç kişinin ayak hızına uyarlanır (aynı hız zamanla daha çok güç)', () => {
+    // Sabit 0.07 hızında şut at; tepe hız öğrenildikçe güç artmalı
+    const doKick = (det: GestureDetector) => {
+      det.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
+      const r = det.update(
+        legs({ lAnkle: 0.83, rAnkle: 0.83, lKnee: 0.63, rKnee: 0.63 })
+      );
+      // cooldown'u temizle (statik karelerle)
+      for (let j = 0; j < 32; j++)
+        det.update(legs({ lAnkle: 0.83, rAnkle: 0.83, lKnee: 0.63, rKnee: 0.63 }));
+      return r.power;
+    };
+    const det = new GestureDetector();
+    const first = doKick(det);
+    let last = first;
+    for (let i = 0; i < 6; i++) last = doKick(det);
+    expect(first).toBeCloseTo(0.25, 2); // ilk şut taban güç
+    expect(last).toBeGreaterThan(first); // hız öğrenildi -> aynı vuruş daha güçlü
+  });
+
   it('diz görünmüyorsa ayak bileğiyle çalışır (diz kapısı atlanır)', () => {
     const det = new GestureDetector();
     const a = legs({ lAnkle: 0.9, rAnkle: 0.9 });

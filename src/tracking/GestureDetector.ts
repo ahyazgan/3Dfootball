@@ -91,6 +91,8 @@ export class GestureDetector {
   private prevRKnee = 0;
   private cooldown = 0;
   private frame = 0;
+  // Gözlenen tepe ayak hızı — güç haritalaması kişiye uyarlanır (0 = öğrenilmedi)
+  private kickPeakVel = 0;
 
   /** Eşikleri dışarıdan ayarla (örn. "şut çok hassas"). */
   setKickThreshold(v: number) {
@@ -101,6 +103,7 @@ export class GestureDetector {
   setCalibration(cal: Calibration) {
     this.cal = cal;
     this.calibrated = true;
+    this.kickPeakVel = 0; // yeni kişi: ayak hızını yeniden öğren
     this.smoothLeanX = cal.neutralLeanX;
     this.leanFilter.reset();
   }
@@ -164,12 +167,18 @@ export class GestureDetector {
     let power = 0;
     let kickCharge = 0;
 
+    // Güç referansı: kişinin gözlenen tepe ayak hızı (yoksa varsayılan).
+    // Senin en sert vuruşun tam güç olur; yavaş vurursan orantılı güç.
+    const defaultPeak = effThreshold * (1 + mul);
+    if (this.kickPeakVel === 0) this.kickPeakVel = defaultPeak;
+    const refVel = Math.max(defaultPeak * 0.5, this.kickPeakVel);
+
     if (this.prevLAnkle !== null && this.prevRAnkle !== null) {
       const lUp = this.prevLAnkle - lAnkle;
       const rUp = this.prevRAnkle - rAnkle;
       const lKneeUp = this.prevLKnee - lKnee;
       const rKneeUp = this.prevRKnee - rKnee;
-      kickCharge = Math.max(0, Math.min(1, Math.max(lUp, rUp) / (effThreshold * mul)));
+      kickCharge = Math.max(0, Math.min(1, Math.max(lUp, rUp) / refVel));
 
       const lValid =
         lUp > effThreshold && (!kneeReliable || lKneeUp > kneeMin) && lLiftOk;
@@ -181,7 +190,12 @@ export class GestureDetector {
         const useRight = rValid && (!lValid || rUp >= lUp);
         kickFoot = useRight ? 'right' : 'left';
         const up = useRight ? rUp : lUp;
-        power = Math.max(0.25, Math.min(1, (up - effThreshold) / (effThreshold * mul)));
+        power = Math.max(
+          GAME_CONFIG.gesture.minPower,
+          Math.min(1, (up - effThreshold) / Math.max(0.01, refVel - effThreshold))
+        );
+        // Tepe hızı öğren: hızlı yüksel, kicks boyunca yavaş düş
+        this.kickPeakVel = Math.max(this.kickPeakVel * 0.9, up);
         this.cooldown = this.cooldownFrames;
       }
     }
