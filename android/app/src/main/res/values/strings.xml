@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Futbol 3D</string>
+    <string name="title_activity_main">Futbol 3D</string>
+    <string name="package_name">com.ornek.futbol3d</string>
+    <string name="custom_url_scheme">com.ornek.futbol3d</string>
+</resources>

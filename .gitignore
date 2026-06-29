@@ -1,0 +1,21 @@
+node_modules/
+dist/
+dist-ssr/
+dev-dist/
+*.local
+.DS_Store
+
+# Capacitor: native kaynak izlenir; derleme çıktıları android/.gitignore'da
+# (gradle, build/, *.apk, local.properties) hariç tutulur.
+# `cap sync` ile üretilen web bundle ve config dosyaları izlenmez:
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+# iOS henüz eklenmedi; eklenince /ios/ satırını kaldırın.
+/ios/
+
+# Loglar
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vite/
