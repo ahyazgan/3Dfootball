@@ -22,9 +22,17 @@ import { CareerHub } from './career/CareerHub';
 import { MatchIntro } from './career/MatchIntro';
 import { MatchResultScreen } from './career/MatchResultScreen';
 import { TrainingScreen } from './career/TrainingScreen';
+import { SeasonSummaryScreen } from './career/SeasonSummaryScreen';
+import { TransferScreen } from './career/TransferScreen';
 import { planMatch } from './career/MatchEngine';
-import { computeMatchResult, applyOutcome } from './career/MatchResult';
+import {
+  computeMatchResult,
+  applyOutcome,
+  type MatchOutcome,
+} from './career/MatchResult';
 import { trainStat, STAT_LABEL } from './career/Training';
+import { recordMatchInSeason, isSeasonOver, endSeason } from './career/Season';
+import { generateOffers, acceptOffer } from './career/Transfers';
 import { toast } from './career/careerStyles';
 
 async function main() {
@@ -128,6 +136,8 @@ async function main() {
   const matchIntro = new MatchIntro();
   const matchResultScreen = new MatchResultScreen();
   const trainingScreen = new TrainingScreen();
+  const seasonSummaryScreen = new SeasonSummaryScreen();
+  const transferScreen = new TransferScreen();
 
   function showMainMenu() {
     hud.setMatchUIVisible(false);
@@ -204,6 +214,44 @@ async function main() {
     });
   }
 
+  // Maç sonrası: sezon bitti mi? -> özet -> transfer; değilse hub
+  function afterMatch(store: PlayerStore, outcome: MatchOutcome) {
+    if (!isSeasonOver(store.data)) {
+      if (outcome.transferInterest) toast('Kulüpler seni izliyor 👀');
+      showHub(store);
+      return;
+    }
+    const summary = endSeason(store);
+    careerSave.set(store.data);
+    seasonSummaryScreen.show(summary, () => {
+      seasonSummaryScreen.hide();
+      if (summary.retired) {
+        careerSave.clear();
+        showMainMenu();
+        return;
+      }
+      const offers = generateOffers(store.data);
+      if (offers.length === 0) {
+        showHub(store);
+        return;
+      }
+      transferScreen.show(
+        offers,
+        (offer) => {
+          acceptOffer(store, offer);
+          careerSave.set(store.data);
+          transferScreen.hide();
+          toast(`${offer.club} ile imzaladın! ✍️`);
+          showHub(store);
+        },
+        () => {
+          transferScreen.hide();
+          showHub(store);
+        }
+      );
+    });
+  }
+
   function startCareerMatch(store: PlayerStore) {
     if (store.data.energy < 10) {
       toast('Enerjin çok düşük — önce dinlen 😴');
@@ -227,14 +275,15 @@ async function main() {
             saveReach: plan.saveReach,
           },
           () => {
-            // Maç bitti: sonucu hesapla, uygula, kaydet, göster
+            // Maç bitti: sonucu hesapla, uygula, sezona işle, kaydet, göster
             const outcome = computeMatchResult(plan, game.getMatchStats());
             applyOutcome(store, outcome);
+            recordMatchInSeason(store, outcome.rating);
             careerSave.set(store.data);
             hud.setMatchUIVisible(false);
             matchResultScreen.show(outcome, () => {
               matchResultScreen.hide();
-              showHub(store);
+              afterMatch(store, outcome);
             });
           }
         );

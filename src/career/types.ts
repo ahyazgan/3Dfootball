@@ -36,7 +36,15 @@ export interface PlayerData {
   totalGoals: number;
   matchesPlayed: number;
   currentClub: string;
+
+  /** Bu sezon oynanan maç (0..matchesPerSeason). */
+  seasonMatch: number;
+  /** Bu sezon lig puanı. */
+  clubPoints: number;
 }
+
+/** Tier sırası (yükselişten düşüşe ölçek). */
+export const TIER_ORDER: CareerTier[] = ['amateur', 'semipro', 'pro', 'star', 'legend'];
 
 export const TIER_LABEL: Record<CareerTier, string> = {
   amateur: 'Amatör',

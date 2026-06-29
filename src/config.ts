@@ -205,8 +205,45 @@ export const GAME_CONFIG = {
         repPerRatingOver5: 6, // (rating - 5) * bu
         valuePerRepGain: 600, // kazanılan şöhret * bu
       },
-      /** Transfer ilgisi eşiği (Aşama 4 için reyting eşiği). */
+      /** Transfer ilgisi eşiği (reyting). */
       transferRating: 7.5,
+    },
+
+    /** Sezon yapısı (takvim, lig, yaşlanma). */
+    season: {
+      matchesPerSeason: 8,
+      retireAge: 36,
+      /** Reytinge göre lig puanı: kazanma/beraberlik eşikleri. */
+      winRating: 7,
+      drawRating: 5,
+      pointsWin: 3,
+      pointsDraw: 1,
+      /** Tier'a göre sezon sonu maaşı. */
+      wageByTier: {
+        amateur: 300,
+        semipro: 1200,
+        pro: 5000,
+        star: 20000,
+        legend: 60000,
+      },
+      /** Lig sıralamasındaki rakip kulüpler. */
+      rivals: ['Demir SK', 'Yıldız FK', 'Kartal United', 'Şahin SK', 'Deniz FK'],
+    },
+
+    /** Transfer teklifleri (sezon sonu). */
+    transfers: {
+      /** Sezon sonu teklif gelme olasılığı. */
+      offerChance: 0.75,
+      maxOffers: 3,
+      /** İmza bonusu = değer * bu. */
+      signingBonusValueMul: 0.15,
+      /** Tier'a göre teklif veren kulüpler. */
+      clubsByTier: {
+        semipro: ['Demirkent SK', 'Akdeniz United'],
+        pro: ['Başkent SK', 'Liman FK', 'Ova Spor'],
+        star: ['Anadolu Devleri', 'Marmara United'],
+        legend: ['Galaktik SK', 'Kıta Avrupası FK'],
+      },
     },
   },
 } as const;

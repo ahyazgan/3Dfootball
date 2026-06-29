@@ -1,4 +1,5 @@
 import { injectCareerStyles } from './careerStyles';
+import { GAME_CONFIG } from '../config';
 import { type PlayerData, TIER_LABEL, POSITION_LABEL, KIT_PALETTE } from './types';
 
 export interface HubCallbacks {
@@ -37,6 +38,7 @@ export class CareerHub {
           <span class="c-label">TIER</span><b style="color:#ffd24d">${TIER_LABEL[d.careerTier]}</b>
         </div>
         <div class="c-row"><span class="c-label">YAŞ / SEZON</span><b>${d.age} · ${d.season}. sezon</b></div>
+        <div class="c-row"><span class="c-label">SEZON MAÇI</span><b>${d.seasonMatch}/${GAME_CONFIG.career.season.matchesPerSeason} · ${d.clubPoints} p</b></div>
         <div class="c-row"><span class="c-label">PARA</span><b>${money} €</b></div>
         <div class="c-row"><span class="c-label">DEĞER</span><b>${value}</b></div>
         <div class="c-row"><span class="c-label">ŞÖHRET</span><b>${d.reputation}</b></div>

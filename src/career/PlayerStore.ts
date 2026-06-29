@@ -23,6 +23,8 @@ export class PlayerStore {
     if (typeof this.data.morale !== 'number') {
       this.data.morale = GAME_CONFIG.career.morale.start;
     }
+    if (typeof this.data.seasonMatch !== 'number') this.data.seasonMatch = 0;
+    if (typeof this.data.clubPoints !== 'number') this.data.clubPoints = 0;
   }
 
   /** Boş varsayılan oyuncu (config.career.start'tan). */
@@ -48,6 +50,8 @@ export class PlayerStore {
       totalGoals: 0,
       matchesPlayed: 0,
       currentClub: s.club,
+      seasonMatch: 0,
+      clubPoints: 0,
     };
   }
 
