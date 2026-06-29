@@ -6,6 +6,13 @@ import { GestureDetector } from './tracking/GestureDetector';
 import { SkeletonRenderer } from './ui/Skeleton';
 import { HUD } from './ui/HUD';
 import { SoundManager } from './audio/SoundManager';
+import {
+  keepAwake,
+  releaseWake,
+  bindWakeLockRefresh,
+  requestFullscreen,
+  lockPortrait,
+} from './util/screen';
 
 async function main() {
   const sceneCanvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -48,16 +55,22 @@ async function main() {
     scoreStore,
     state,
     trackingEnabled: false,
+    onGameOver: () => void releaseWake(),
   });
   game.start();
 
   // --- Başlat akışı ---
   let trackingError: string | undefined;
 
+  bindWakeLockRefresh();
+
   hud.onStart = async () => {
     hud.hideOverlay();
     // Seçilen zorluğu uygula
     game.setDifficulty(hud.getDifficulty());
+    // Ekranı uyanık tut + tam ekran (kullanıcı hareketi içinde)
+    void keepAwake();
+    void requestFullscreen().then(() => lockPortrait());
     // Ses motorunu kullanıcı hareketiyle başlat ve başlangıç düdüğü çal
     await sound.init().catch(() => {});
 

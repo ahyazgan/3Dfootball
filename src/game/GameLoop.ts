@@ -35,6 +35,8 @@ export interface GameDeps {
   scoreStore: ScoreStore;
   state: GameState;
   trackingEnabled: boolean;
+  /** Maç bitince çağrılır (örn. wake lock'ı bırak). */
+  onGameOver?: () => void;
 }
 
 /**
@@ -441,6 +443,7 @@ export class GameLoop {
     if (state.isOver) {
       const isRecord = this.d.scoreStore.trySetBest(state.score);
       hud.showEndScreen(state, this.d.scoreStore.getBest(), isRecord);
+      this.d.onGameOver?.();
     } else {
       hud.setStatus('Köşeyi seç, bacağını savur!');
     }
