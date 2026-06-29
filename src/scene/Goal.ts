@@ -11,6 +11,11 @@ export const GOAL_LINE_Z = -11;
 export class Goal {
   readonly group = new THREE.Group();
 
+  private netGeo!: THREE.BufferGeometry;
+  private netBase!: Float32Array; // dinlenme konumları
+  private netDisp!: Float32Array; // anlık yer değiştirme (base'den fark)
+  private readonly NET_DEPTH = 1.6;
+
   constructor() {
     this.group.position.set(0, 0, GOAL_LINE_Z);
     this.buildFrame();
@@ -52,7 +57,7 @@ export class Goal {
   /** File: ön açıklıktan arkaya eğimli, ızgara çizgili. */
   private buildNet() {
     const halfW = GOAL_WIDTH / 2;
-    const depth = 1.6; // filenin arkaya derinliği
+    const depth = this.NET_DEPTH; // filenin arkaya derinliği
     const mat = new THREE.LineBasicMaterial({
       color: 0xffffff,
       transparent: true,
@@ -99,5 +104,46 @@ export class Goal {
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
     const net = new THREE.LineSegments(geo, mat);
     this.group.add(net);
+
+    this.netGeo = geo;
+    this.netBase = Float32Array.from(pts);
+    this.netDisp = new Float32Array(pts.length);
+  }
+
+  /**
+   * Top fileye girince çarpma noktasında file şişer.
+   * worldPoint dünya koordinatında; kale grubuna göre yerele çevrilir.
+   */
+  hitNet(worldPoint: THREE.Vector3) {
+    const lx = worldPoint.x - this.group.position.x;
+    const ly = worldPoint.y - this.group.position.y;
+    const sigma2 = 2 * 0.7 * 0.7;
+    const strength = 0.55;
+    for (let i = 0; i < this.netBase.length; i += 3) {
+      const bx = this.netBase[i];
+      const by = this.netBase[i + 1];
+      const bz = this.netBase[i + 2];
+      const d2 = (bx - lx) ** 2 + (by - ly) ** 2;
+      const fall = Math.exp(-d2 / sigma2);
+      // Sadece geride olan (file) düğümler şişsin; çerçeveye yakın olanlar az
+      const depthFactor = Math.min(1, -bz / this.NET_DEPTH + 0.2);
+      const push = strength * fall * depthFactor;
+      this.netDisp[i] = (lx - bx) * fall * 0.25; // çarpmaya doğru çek
+      this.netDisp[i + 1] = (ly - by) * fall * 0.25;
+      this.netDisp[i + 2] = -push; // arkaya doğru şiş
+    }
+  }
+
+  /** File yer değiştirmesini yumuşakça dinlenmeye döndür. */
+  updateNet(dt: number) {
+    const decay = Math.pow(0.0025, dt); // ~ yaylanma
+    const arr = this.netGeo.attributes.position.array as Float32Array;
+    let active = false;
+    for (let i = 0; i < this.netDisp.length; i++) {
+      this.netDisp[i] *= decay;
+      if (Math.abs(this.netDisp[i]) > 1e-4) active = true;
+      arr[i] = this.netBase[i] + this.netDisp[i];
+    }
+    if (active) this.netGeo.attributes.position.needsUpdate = true;
   }
 }

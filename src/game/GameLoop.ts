@@ -60,6 +60,16 @@ export class GameLoop {
   private readonly FIXED_STEP = 1 / 60;
   private saveReach: number = GAME_CONFIG.save.horizReach;
 
+  // Sinematik (golde ağır çekim + kamera takibi)
+  private timeScale = 1;
+  private slowmoTimer = 0;
+  private readonly SLOWMO_DUR = 0.85;
+  private readonly DEFAULT_CAM_POS = new THREE.Vector3(0, 1.75, 5.6);
+  private readonly DEFAULT_LOOK = new THREE.Vector3(0, 1.1, -6);
+  private camTargetPos = new THREE.Vector3(0, 1.75, 5.6);
+  private camLookAt = new THREE.Vector3(0, 1.1, -6);
+  private camLookTarget = new THREE.Vector3(0, 1.1, -6);
+
   // Klavye yedeği (kamerasız test)
   private keyZone: DiveZone = 'center';
   private keyKick = false;
@@ -88,8 +98,8 @@ export class GameLoop {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-    this.camera.position.set(0, 1.75, 5.6);
-    this.camera.lookAt(0, 1.1, -6);
+    this.camera.position.copy(this.DEFAULT_CAM_POS);
+    this.camera.lookAt(this.camLookAt);
 
     this.stadium.addTo(this.scene);
     this.goal.addTo(this.scene);
@@ -253,9 +263,19 @@ export class GameLoop {
       if (this.resultTimer <= 0) this.finishResult();
     }
 
+    // Ağır çekim: golde zaman ölçeği 0.3'ten 1'e yumuşar
+    if (this.slowmoTimer > 0) {
+      this.slowmoTimer -= dt;
+      const f = Math.max(0, this.slowmoTimer / this.SLOWMO_DUR);
+      this.timeScale = 0.3 + 0.7 * (1 - f);
+    } else {
+      this.timeScale = 1;
+    }
+    const sdt = dt * this.timeScale;
+
     // --- Fizik (sabit adım, kare hızından bağımsız) + senkron ---
     this.d.world.timestep = this.FIXED_STEP;
-    this.physicsAccumulator += dt;
+    this.physicsAccumulator += sdt;
     let steps = 0;
     const inFlight = state.phase === 'shooting';
     while (this.physicsAccumulator >= this.FIXED_STEP && steps < 6) {
@@ -265,11 +285,18 @@ export class GameLoop {
       steps++;
     }
     this.ball.sync();
-    this.keeper.update(dt);
+    this.keeper.update(sdt);
 
     // Görsel efektler
     this.trail.update(this.ball.position(), inFlight);
-    this.confetti.update(dt);
+    this.confetti.update(sdt);
+    this.goal.updateNet(sdt);
+
+    // Kamera yumuşak takip (golde sinematik hedefe doğru)
+    const ck = 1 - Math.pow(0.0006, dt);
+    this.camera.position.lerp(this.camTargetPos, ck);
+    this.camLookAt.lerp(this.camLookTarget, ck);
+    this.camera.lookAt(this.camLookAt);
   }
 
   private shoot(zone: DiveZone, power: number) {
@@ -358,6 +385,11 @@ export class GameLoop {
       this.d.sound.playGoal();
       if (state.lastGoalScore) hud.flashGoalScore(state.lastGoalScore);
       this.confetti.burst(pos);
+      this.goal.hitNet(pos);
+      // Sinematik: ağır çekim + kamera file önüne yaklaşır
+      this.slowmoTimer = this.SLOWMO_DUR;
+      this.camTargetPos.set(pos.x * 0.35, 1.0, 1.8);
+      this.camLookTarget.set(pos.x * 0.5, 1.2, GOAL_LINE_Z + 0.6);
     } else if (result === 'save') this.d.sound.playSave();
     else this.d.sound.playMiss();
     hud.flashResult(result);
@@ -374,6 +406,9 @@ export class GameLoop {
     this.trail.reset(this.ball.position());
     this.keeper.reset();
     gesture.reset();
+    // Kamerayı varsayılana döndür
+    this.camTargetPos.copy(this.DEFAULT_CAM_POS);
+    this.camLookTarget.copy(this.DEFAULT_LOOK);
     state.next();
 
     if (state.isOver) {
