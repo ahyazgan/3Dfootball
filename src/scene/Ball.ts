@@ -23,7 +23,11 @@ export class Ball {
     const tex = this.makeBallTexture();
     tex.colorSpace = THREE.SRGBColorSpace;
     const geo = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, metalness: 0.0 });
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex,
+      roughness: 0.5,
+      metalness: 0.0,
+    });
     this.mesh = new THREE.Mesh(geo, mat);
     this.mesh.castShadow = true;
 
@@ -78,7 +82,8 @@ export class Ball {
       const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
       const x = cx + Math.cos(a) * r;
       const y = cy + Math.sin(a) * r;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     }
     ctx.closePath();
     ctx.fill();

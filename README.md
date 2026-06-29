@@ -73,17 +73,30 @@ npm run build          # tip kontrolü + vite build -> dist/
 npm run preview
 ```
 
-## 🎚️ Kalibrasyon (ayarlanabilir eşikler)
+## 🎚️ Kalibrasyon ve denge (`src/config.ts`)
 
-`src/tracking/GestureDetector.ts` içinde:
+Tüm ayarlanabilir sabitler tek dosyada toplanmıştır: **`src/config.ts`**.
 
-| Değişken | Anlamı | Varsayılan |
-|---|---|---|
-| `leftThreshold` / `rightThreshold` | sol/sağ köşe eğilme sınırı | `0.42` / `0.58` |
-| `kickVelThreshold` | bacak yukarı hız şut eşiği | `0.045` |
-| `cooldownFrames` | çift tetiklemeyi önleme | `30` |
+| Grup      | Örnek alanlar                                       | Ne işe yarar              |
+| --------- | --------------------------------------------------- | ------------------------- |
+| `gesture` | `leftThreshold` `rightThreshold` `kickVelThreshold` | yön ve şut algılama eşiği |
+| `keeper`  | `skillBase` `skillRamp` `readAimChance`             | kaleci zorluğu/zekâsı     |
+| `shot`    | `speedMin` `speedMax` `arcBoost` `zoneTargetX`      | şut hızı, yay, hedefleme  |
+| `save`    | `horizReach` `maxHeight`                            | kurtarış toleransı        |
 
-Kaleci zorluğu: `src/game/GameLoop.ts` → `chooseDive()` içindeki `guessChance` (0.45).
+> Örnek: "şut çok hassas" → `gesture.kickVelThreshold` değerini yükselt.
+> "kaleci çok kolay" → `keeper.skillBase`/`skillRamp` değerlerini artır.
+
+## 🧪 Geliştirme (test, lint, format)
+
+```bash
+npm test           # Vitest birim testleri (GestureDetector, KeeperAI)
+npm run lint       # ESLint
+npm run format     # Prettier ile biçimlendir
+npm run typecheck  # tsc tip kontrolü
+```
+
+CI: her push'ta `.github/workflows/ci.yml` tip kontrolü + lint + test + build çalıştırır.
 
 ## 📱 Android paketleme (Capacitor — hazır)
 
@@ -100,13 +113,14 @@ npm run android:open      # derle, senkronla ve Android Studio'da aç
 
 Hazır npm scriptleri:
 
-| Script | İşlevi |
-|---|---|
-| `npm run cap:sync` | `npm run build` + `cap sync` (web bundle'ı native'e kopyalar) |
-| `npm run android:add` | `cap add android` (platform yoksa yeniden oluşturur) |
-| `npm run android:open` | build + sync + Android Studio'da açar |
+| Script                 | İşlevi                                                        |
+| ---------------------- | ------------------------------------------------------------- |
+| `npm run cap:sync`     | `npm run build` + `cap sync` (web bundle'ı native'e kopyalar) |
+| `npm run android:add`  | `cap add android` (platform yoksa yeniden oluşturur)          |
+| `npm run android:open` | build + sync + Android Studio'da açar                         |
 
 Kamera (vücut takibi) için yapılandırılanlar:
+
 - `AndroidManifest.xml` → `CAMERA` izni + kamera özellikleri
 - `MainActivity.java` → açılışta çalışma anı kamera izni isteği
 

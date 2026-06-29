@@ -61,7 +61,8 @@ export class SoundManager {
     const g = this.ctx.createGain();
     o.type = type;
     o.frequency.setValueAtTime(freq, start);
-    if (opts.f1 !== undefined) o.frequency.exponentialRampToValueAtTime(Math.max(1, opts.f1), start + dur);
+    if (opts.f1 !== undefined)
+      o.frequency.exponentialRampToValueAtTime(Math.max(1, opts.f1), start + dur);
     g.gain.setValueAtTime(0.0001, start);
     g.gain.exponentialRampToValueAtTime(gain, start + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
@@ -83,7 +84,8 @@ export class SoundManager {
     const biq = this.ctx.createBiquadFilter();
     biq.type = filter.type;
     biq.frequency.setValueAtTime(filter.freq, start);
-    if (filter.sweepTo) biq.frequency.exponentialRampToValueAtTime(filter.sweepTo, start + dur);
+    if (filter.sweepTo)
+      biq.frequency.exponentialRampToValueAtTime(filter.sweepTo, start + dur);
     biq.Q.value = filter.q ?? 1;
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, start);

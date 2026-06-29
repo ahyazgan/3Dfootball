@@ -2,11 +2,20 @@ import type { PoseLandmarks } from '../tracking/PoseTracker';
 
 // İskelet bağlantıları (MediaPipe Pose indeksleri)
 const CONNECTIONS: [number, number][] = [
-  [11, 12], [11, 23], [12, 24], [23, 24], // gövde
-  [11, 13], [13, 15], // sol kol
-  [12, 14], [14, 16], // sağ kol
-  [23, 25], [25, 27], [27, 31], // sol bacak
-  [24, 26], [26, 28], [28, 32], // sağ bacak
+  [11, 12],
+  [11, 23],
+  [12, 24],
+  [23, 24], // gövde
+  [11, 13],
+  [13, 15], // sol kol
+  [12, 14],
+  [14, 16], // sağ kol
+  [23, 25],
+  [25, 27],
+  [27, 31], // sol bacak
+  [24, 26],
+  [26, 28],
+  [28, 32], // sağ bacak
 ];
 
 /**

@@ -71,8 +71,7 @@ async function main() {
         hud.setStatus('Köşeyi seç, bacağını savur!');
       } catch (err) {
         console.warn('Poz takibi başlatılamadı:', err);
-        trackingError =
-          'Kamera/poz takibi başlatılamadı. Klavye ile oynayabilirsin.';
+        trackingError = 'Kamera/poz takibi başlatılamadı. Klavye ile oynayabilirsin.';
         hud.setStatus('Klavye: ← → yön, BOŞLUK şut');
       }
     }

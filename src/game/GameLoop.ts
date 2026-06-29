@@ -195,7 +195,11 @@ export class GameLoop {
     const targetX = ZONE_TARGET_X[zone];
     const target = new THREE.Vector3(targetX, GAME_CONFIG.shot.aimHeight, GOAL_LINE_Z);
     const dir = target.clone().sub(ballPos).normalize();
-    const speed = THREE.MathUtils.lerp(GAME_CONFIG.shot.speedMin, GAME_CONFIG.shot.speedMax, power);
+    const speed = THREE.MathUtils.lerp(
+      GAME_CONFIG.shot.speedMin,
+      GAME_CONFIG.shot.speedMax,
+      power
+    );
     const vel = dir.multiplyScalar(speed);
     vel.y += GAME_CONFIG.shot.arcBoost; // hafif yay
 
