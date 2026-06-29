@@ -10,7 +10,8 @@ import { GestureDetector } from '../tracking/GestureDetector';
 import { SkeletonRenderer } from '../ui/Skeleton';
 import { HUD } from '../ui/HUD';
 import { SoundManager } from '../audio/SoundManager';
-import { GameState, type ShotResult } from './GameState';
+import { KeeperAI } from './KeeperAI';
+import { GameState, TOTAL_SHOTS, type ShotResult } from './GameState';
 
 const ZONE_TARGET_X: Record<DiveZone, number> = {
   left: -2.6,
@@ -43,6 +44,7 @@ export class GameLoop {
   private stadium = new Stadium();
   private goal = new Goal();
   private keeper = new Keeper();
+  private keeperAI = new KeeperAI();
   private ball: Ball;
 
   private d: GameDeps;
@@ -117,6 +119,13 @@ export class GameLoop {
   /** Poz takibi hazır olunca dışarıdan etkinleştir. */
   setTrackingEnabled(on: boolean) {
     this.d.trackingEnabled = on;
+  }
+
+  /** Yeni maç başlarken kaleci hafızasını ve sahneyi sıfırla. */
+  newGame() {
+    this.keeperAI.reset();
+    this.keeper.reset();
+    this.ball.reset();
   }
 
   private frame = (now: number) => {
@@ -198,8 +207,9 @@ export class GameLoop {
     this.ball.shoot(vel, spin);
     this.d.sound.playKick(power);
 
-    // Kaleci AI: bazen doğru yönü okur
-    const dive = this.chooseDive(zone);
+    // Kaleci AI: eğilimi okur, maç ilerledikçe zorlaşır
+    const dive = this.keeperAI.decide(zone, state.shots, TOTAL_SHOTS);
+    this.keeperAI.record(zone);
     this.keeper.dive(dive);
 
     // Durum
@@ -209,14 +219,6 @@ export class GameLoop {
     gesture.reset();
     hud.setStatus('');
     hud.setPower(0);
-  }
-
-  /** Kaleci yön seçimi — zorluk buradan ayarlanır. */
-  private chooseDive(aimZone: DiveZone): DiveZone {
-    const guessChance = 0.45; // doğru tahmin olasılığı
-    if (Math.random() < guessChance) return aimZone;
-    const zones: DiveZone[] = ['left', 'center', 'right'];
-    return zones[Math.floor(Math.random() * zones.length)];
   }
 
   private stepShot() {

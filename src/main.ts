@@ -58,6 +58,7 @@ async function main() {
     await sound.init().catch(() => {});
     sound.playWhistle();
     state.start();
+    game.newGame();
     hud.updateStats(state);
     hud.setStatus('Köşeyi seç, bacağını savur!');
 
