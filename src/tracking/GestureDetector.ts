@@ -239,6 +239,23 @@ export class GestureDetector {
     this.cooldown = this.cooldownFrames; // şut sonrası kısa bekleme
   }
 
+  /** Kalibrasyon ekranı için uzuv görünürlük kontrol listesi. */
+  static checklist(landmarks: PoseLandmarks | null): { label: string; ok: boolean }[] {
+    const groups: [string, number[]][] = [
+      ['Omuzlar', [L_SHOULDER, R_SHOULDER]],
+      ['Kalça', [L_HIP, R_HIP]],
+      ['Dizler', [L_KNEE, R_KNEE]],
+      ['Ayaklar', [L_ANKLE, R_ANKLE]],
+    ];
+    const min = GAME_CONFIG.gesture.minVisibility;
+    const ok = (i: number) => {
+      if (!landmarks || landmarks.length < 33) return false;
+      const v = landmarks[i]?.visibility;
+      return v === undefined || v >= min;
+    };
+    return groups.map(([label, idx]) => ({ label, ok: idx.every(ok) }));
+  }
+
   /**
    * Tek kareden kalibrasyon örneği çıkar (statik, durum tutmaz).
    * Görünürlük yetersizse null döner.

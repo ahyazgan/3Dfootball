@@ -211,7 +211,7 @@ export class GameLoop {
     if (sample) this.calSamples.push(sample);
 
     const remainSec = Math.max(0, Math.ceil((this.calEndMs - now) / 1000));
-    this.d.hud.setCalibration(remainSec, sample !== null);
+    this.d.hud.setCalibration(remainSec, GestureDetector.checklist(landmarks));
 
     if (now >= this.calEndMs) {
       this.calibrating = false;

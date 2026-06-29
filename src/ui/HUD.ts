@@ -104,14 +104,17 @@ export class HUD {
       font-size:16px;font-weight:700;color:#ffd24d;text-shadow:0 2px 8px #000;
       pointer-events:none}
     .cal{position:absolute;inset:0;display:flex;flex-direction:column;
-      align-items:center;justify-content:center;gap:14px;text-align:center;
-      background:radial-gradient(ellipse at center,rgba(6,26,14,.55),rgba(3,10,6,.8));
-      pointer-events:none;padding:24px}
-    .cal .title{font-size:24px;font-weight:800;color:#fff;text-shadow:0 2px 8px #000}
-    .cal .count{font-size:72px;font-weight:900;color:#2bd66a;line-height:1}
-    .cal .sub{font-size:15px;color:#bfe;max-width:380px;line-height:1.5}
-    .cal .ok{color:#2bd66a;font-weight:700}
-    .cal .no{color:#ff6a4d;font-weight:700}
+      align-items:center;justify-content:flex-start;gap:12px;text-align:center;
+      background:linear-gradient(180deg,rgba(3,10,6,.78),rgba(3,10,6,.32) 40%,rgba(3,10,6,.1));
+      pointer-events:none;padding:60px 24px 0}
+    .cal .title{font-size:22px;font-weight:800;color:#fff;text-shadow:0 2px 8px #000}
+    .cal .count{font-size:64px;font-weight:900;color:#2bd66a;line-height:1;text-shadow:0 2px 12px #000}
+    .cal .sub{font-size:14px;color:#dff;max-width:360px;line-height:1.5;text-shadow:0 1px 4px #000}
+    .cal-list{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+    .cal-list .chip{font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.18)}
+    .cal-list .chip.ok{background:rgba(43,214,106,.22);color:#9bf3bf;border-color:#2bd66a}
+    .cal-list .chip.no{background:rgba(255,106,77,.18);color:#ffb3a3;border-color:#ff6a4d}
     .hidden{display:none!important}
     `;
     const style = document.createElement('style');
@@ -210,16 +213,21 @@ export class HUD {
     }
   }
 
-  /** Kalibrasyon ekranı: geri sayım + algılama durumu. */
-  setCalibration(secondsLeft: number, detected: boolean) {
+  /** Kalibrasyon ekranı: geri sayım + canlı uzuv kontrol listesi (poz aynası). */
+  setCalibration(secondsLeft: number, checklist: { label: string; ok: boolean }[]) {
     this.calEl.classList.remove('hidden');
+    const rows = checklist
+      .map(
+        (c) =>
+          `<span class="chip ${c.ok ? 'ok' : 'no'}">${c.ok ? '✓' : '✗'} ${c.label}</span>`
+      )
+      .join('');
     this.calEl.innerHTML = `
       <div class="title">Kalibrasyon</div>
       <div class="count">${secondsLeft}</div>
-      <div class="sub">Kameranın karşısında <b>düz dur</b>, tüm vücudun görünsün.
-      <br/><span class="${detected ? 'ok' : 'no'}">${
-        detected ? '✓ Algılandı' : '✗ Vücut bulunamadı'
-      }</span></div>
+      <div class="sub">Kameranın karşısında <b>düz dur</b> — yeşil iskelet seni izliyor.
+      Tüm vücudun (ayaklar dahil) görünsün.</div>
+      <div class="cal-list">${rows}</div>
     `;
   }
 

@@ -162,6 +162,26 @@ describe('GestureDetector — şut (bacak savurma)', () => {
   });
 });
 
+describe('GestureDetector — kalibrasyon kontrol listesi', () => {
+  it('tüm vücut görünürse hepsi ✓', () => {
+    const list = GestureDetector.checklist(legs({}));
+    expect(list.map((c) => c.label)).toEqual(['Omuzlar', 'Kalça', 'Dizler', 'Ayaklar']);
+    expect(list.every((c) => c.ok)).toBe(true);
+  });
+
+  it('ayaklar görünmüyorsa Ayaklar ✗', () => {
+    const lm = legs({});
+    (lm[L_ANKLE] as { visibility: number }).visibility = 0.1;
+    const list = GestureDetector.checklist(lm);
+    expect(list.find((c) => c.label === 'Ayaklar')?.ok).toBe(false);
+    expect(list.find((c) => c.label === 'Omuzlar')?.ok).toBe(true);
+  });
+
+  it('landmark yoksa hepsi ✗', () => {
+    expect(GestureDetector.checklist(null).every((c) => !c.ok)).toBe(true);
+  });
+});
+
 describe('GestureDetector — kalibrasyon', () => {
   it('nötr merkez kayınca o kişi için orta sayılır', () => {
     const det = new GestureDetector();
