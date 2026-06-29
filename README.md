@@ -108,6 +108,18 @@ npm run typecheck  # tsc tip kontrolü
 
 CI: her push'ta `.github/workflows/ci.yml` tip kontrolü + lint + test + build çalıştırır.
 
+## 📲 PWA (uygulama gibi)
+
+Oyun bir **Progressive Web App**: tarayıcıdan "Ana ekrana ekle" ile yüklenir,
+tam ekran (standalone) açılır ve uygulama kabuğu çevrimdışı önbelleğe alınır.
+
+- `manifest.webmanifest` + ikonlar (`public/icon-192.png`, `icon-512.png`)
+- Service worker (vite-plugin-pwa, `registerType: autoUpdate`) build'de üretilir
+- Çevrimdışı: ilk açılıştan sonra app shell + Rapier önbellekten yüklenir
+  (poz takibi modeli CDN'den geldiği için çevrimdışıyken klavye modu çalışır)
+
+> Service worker yalnızca üretim derlemesinde aktiftir: `npm run build && npm run preview`.
+
 ## 📱 Android paketleme (Capacitor — hazır)
 
 Android platformu **kuruldu** (`capacitor.config.ts`, `android/` projesi,
