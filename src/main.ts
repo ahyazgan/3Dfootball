@@ -21,8 +21,10 @@ import { CharacterCreate } from './career/CharacterCreate';
 import { CareerHub } from './career/CareerHub';
 import { MatchIntro } from './career/MatchIntro';
 import { MatchResultScreen } from './career/MatchResultScreen';
+import { TrainingScreen } from './career/TrainingScreen';
 import { planMatch } from './career/MatchEngine';
 import { computeMatchResult, applyOutcome } from './career/MatchResult';
+import { trainStat, STAT_LABEL } from './career/Training';
 import { toast } from './career/careerStyles';
 
 async function main() {
@@ -125,6 +127,7 @@ async function main() {
   const careerHub = new CareerHub();
   const matchIntro = new MatchIntro();
   const matchResultScreen = new MatchResultScreen();
+  const trainingScreen = new TrainingScreen();
 
   function showMainMenu() {
     hud.setMatchUIVisible(false);
@@ -165,7 +168,10 @@ async function main() {
   function showHub(store: PlayerStore) {
     careerHub.show(store.data, {
       onMatch: () => startCareerMatch(store),
-      onTrain: () => toast('Antrenman Aşama 3’te gelecek 💪'),
+      onTrain: () => {
+        careerHub.hide();
+        showTraining(store);
+      },
       onRest: () => {
         store.rest();
         careerSave.set(store.data);
@@ -175,6 +181,25 @@ async function main() {
       onMenu: () => {
         careerHub.hide();
         showMainMenu();
+      },
+    });
+  }
+
+  function showTraining(store: PlayerStore) {
+    trainingScreen.show(store.data, {
+      onTrain: (stat) => {
+        const res = trainStat(store, stat);
+        if (!res) {
+          toast('Enerjin yetersiz — önce dinlen 😴');
+        } else {
+          careerSave.set(store.data);
+          toast(`${STAT_LABEL[stat]} +${res.gain} → ${res.newValue}`);
+        }
+        showTraining(store); // güncel değerlerle yeniden çiz
+      },
+      onBack: () => {
+        trainingScreen.hide();
+        showHub(store);
       },
     });
   }

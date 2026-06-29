@@ -38,6 +38,18 @@ describe('MatchEngine.planMatch', () => {
     expect(sharp.saveReach).toBeLessThan(weak.saveReach);
   });
 
+  it('yüksek hız (pace>=75) +1 kritik an verir', () => {
+    const fast = planMatch(player({ careerTier: 'pro', pace: 80 }), () => 0.5);
+    const slow = planMatch(player({ careerTier: 'pro', pace: 40 }), () => 0.5);
+    expect(fast.criticalMoments).toBe(slow.criticalMoments + 1);
+  });
+
+  it('düşük moral kaleciyi zorlaştırır (daha büyük saveReach)', () => {
+    const low = planMatch(player({ morale: 20 }), () => 0.5);
+    const high = planMatch(player({ morale: 90 }), () => 0.5);
+    expect(low.saveReach).toBeGreaterThan(high.saveReach);
+  });
+
   it('kritik an her zaman sınırlar içinde', () => {
     for (const tier of ['amateur', 'semipro', 'pro', 'star', 'legend'] as const) {
       for (const rngV of [0, 0.5, 1]) {

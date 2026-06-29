@@ -36,21 +36,29 @@ export function planMatch(
   const variation = Math.round(rng() * 2 - 1); // -1 / 0 / +1
   const opponentStrength = clamp(tierIdx + 1 + variation, 1, 5);
 
-  // Güçlü rakip = az kritik an (lineer: güç 1 -> max, güç 5 -> min)
-  const t = (opponentStrength - 1) / 4;
-  const criticalMoments = Math.round(lerp(m.maxMoments, m.minMoments, t));
+  const morale = player.morale ?? GAME_CONFIG.career.morale.start;
 
-  // Kaleci zorluğu güce göre; oyuncu statları hafifletir
+  // Güçlü rakip = az kritik an; yüksek hız (pace>=75) daha iyi pozisyon -> +1 şans
+  const t = (opponentStrength - 1) / 4;
+  const paceBonus = player.pace >= 75 ? 1 : 0;
+  const criticalMoments = clamp(
+    Math.round(lerp(m.maxMoments, m.minMoments, t)) + paceBonus,
+    m.minMoments,
+    m.maxMoments
+  );
+
+  // Kaleci zorluğu güce göre; şut/teknik hafifletir, düşük moral zorlaştırır
   const k = m.keeper;
   const shotEase = (player.shot - 50) / 50; // -1..1
   const techEase = (player.technique - 50) / 50;
+  const moralePenalty = ((70 - morale) / 100) * 0.1; // düşük moral -> + (zor)
   const skillBase = clamp(
     lerp(k.skillBaseMin, k.skillBaseMax, t) - techEase * 0.08,
     0.1,
     0.7
   );
   const saveReach = clamp(
-    lerp(k.saveReachMin, k.saveReachMax, t) - shotEase * 0.15,
+    lerp(k.saveReachMin, k.saveReachMax, t) - shotEase * 0.15 + moralePenalty,
     1.0,
     1.9
   );

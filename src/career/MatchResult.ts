@@ -61,12 +61,14 @@ export function computeMatchResult(plan: MatchPlan, stats: MatchStats): MatchOut
   };
 }
 
-/** Sonucu oyuncuya uygula (para/şöhret/değer/gol/enerji). */
+/** Sonucu oyuncuya uygula (para/şöhret/değer/gol/enerji/moral). */
 export function applyOutcome(store: PlayerStore, outcome: MatchOutcome): void {
   store.addMoney(outcome.money);
   store.addReputation(outcome.reputation);
   store.addValue(outcome.value);
   store.spendEnergy(GAME_CONFIG.career.match.energyCost);
+  // Moral: iyi maç morali yükseltir, kötü maç düşürür ((rating-6)*matchMul)
+  store.addMorale(Math.round((outcome.rating - 6) * GAME_CONFIG.career.morale.matchMul));
   store.data.matchesPlayed += 1;
   store.data.seasonGoals += outcome.goals;
   store.data.totalGoals += outcome.goals;

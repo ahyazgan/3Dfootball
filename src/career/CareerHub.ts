@@ -44,6 +44,10 @@ export class CareerHub {
           <div class="c-row"><span class="c-label">ENERJİ</span><b>${Math.round(d.energy)}%</b></div>
           <div class="c-bar"><i style="width:${d.energy}%;background:linear-gradient(90deg,#ffd24d,#2bd66a)"></i></div>
         </div>
+        <div>
+          <div class="c-row"><span class="c-label">MORAL</span><b>${Math.round(d.morale)}%</b></div>
+          <div class="c-bar"><i style="width:${d.morale}%;background:linear-gradient(90deg,#6fb6ff,#2bd66a)"></i></div>
+        </div>
         <div class="c-stats">
           ${stat('ŞUT', d.shot)}${stat('HIZ', d.pace)}
           ${stat('TEKNİK', d.technique)}${stat('FİZİK', d.physical)}

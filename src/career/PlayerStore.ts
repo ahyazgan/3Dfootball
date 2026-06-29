@@ -19,6 +19,10 @@ export class PlayerStore {
 
   constructor(data?: PlayerData) {
     this.data = data ?? PlayerStore.createDefault();
+    // Eski kayıt göçü: eksik alanları doldur
+    if (typeof this.data.morale !== 'number') {
+      this.data.morale = GAME_CONFIG.career.morale.start;
+    }
   }
 
   /** Boş varsayılan oyuncu (config.career.start'tan). */
@@ -33,6 +37,7 @@ export class PlayerStore {
       technique: s.stats.technique,
       physical: s.stats.physical,
       energy: s.energy,
+      morale: GAME_CONFIG.career.morale.start,
       money: s.money,
       value: s.value,
       reputation: s.reputation,
@@ -71,6 +76,14 @@ export class PlayerStore {
   }
   rest() {
     this.data.energy = clamp(this.data.energy + GAME_CONFIG.career.restEnergy, 0, 100);
+    this.data.morale = clamp(
+      this.data.morale + GAME_CONFIG.career.morale.restGain,
+      0,
+      100
+    );
+  }
+  addMorale(n: number) {
+    this.data.morale = clamp(this.data.morale + n, 0, 100);
   }
 
   /** Şöhrete göre tier'ı güncelle (yalnızca yükselir). */

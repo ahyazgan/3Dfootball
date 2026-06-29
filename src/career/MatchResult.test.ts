@@ -62,4 +62,22 @@ describe('MatchResult.applyOutcome', () => {
     expect(store.data.matchesPlayed).toBe(1);
     expect(store.data.energy).toBe(100 - GAME_CONFIG.career.match.energyCost);
   });
+
+  it('iyi maç morali yükseltir, kötü maç düşürür', () => {
+    const good = new PlayerStore();
+    const m0 = good.data.morale;
+    applyOutcome(
+      good,
+      computeMatchResult(plan(2), stats({ goals: 2, shots: 2, score: 800 }))
+    );
+    expect(good.data.morale).toBeGreaterThan(m0); // yüksek reyting
+
+    const bad = new PlayerStore();
+    const b0 = bad.data.morale;
+    applyOutcome(
+      bad,
+      computeMatchResult(plan(5), stats({ goals: 0, shots: 5, score: 0 }))
+    );
+    expect(bad.data.morale).toBeLessThan(b0); // düşük reyting
+  });
 });

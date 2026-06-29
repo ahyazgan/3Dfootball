@@ -23,6 +23,7 @@ export interface PlayerData {
   physical: number;
 
   energy: number; // 0-100
+  morale: number; // 0-100
   money: number;
   value: number;
   reputation: number;

@@ -149,6 +149,22 @@ export const GAME_CONFIG = {
     /** Dinlenmede kazanılan enerji. */
     restEnergy: 40,
 
+    /** Antrenman: enerji harcayıp stat yükseltme (azalan verim). */
+    training: {
+      energyCost: 20,
+      baseGain: 8,
+      minGain: 1,
+      maxStat: 100,
+    },
+
+    /** Moral (0-100): maç performansı ve dinlenme ile değişir. */
+    morale: {
+      start: 70,
+      restGain: 8,
+      /** Maç sonrası moral değişimi = (rating - 6) * matchMul. */
+      matchMul: 6,
+    },
+
     /** Maç dengesi (rakip gücü -> kritik an + zorluk + ödüller). */
     match: {
       /** Kritik an sayısı sınırları (güçlü rakip = az an). */
