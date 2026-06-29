@@ -92,6 +92,7 @@ Tüm ayarlanabilir sabitler tek dosyada toplanmıştır: **`src/config.ts`**.
 | `scoring`    | `goalBase` `cornerBonus` `streakStep`        | puan, köşe bonusu, combo   |
 | `shot`       | `speedMin` `speedMax` `arcBoost` `magnus`    | şut hızı, yay, falso       |
 | `save`       | `horizReach` `maxHeight`                     | kurtarış toleransı         |
+| `graphics`   | `bloom` `bloomStrength` `bloomThreshold`     | ışıma efekti (aç/kapat)    |
 
 > Örnek: "şut çok hassas" → `gesture.kickVelThreshold` değerini yükselt.
 > "kaleci çok kolay" → `keeper.skillBase`/`skillRamp` değerlerini artır.
