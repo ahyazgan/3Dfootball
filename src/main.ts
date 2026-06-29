@@ -24,6 +24,8 @@ import { MatchResultScreen } from './career/MatchResultScreen';
 import { TrainingScreen } from './career/TrainingScreen';
 import { SeasonSummaryScreen } from './career/SeasonSummaryScreen';
 import { TransferScreen } from './career/TransferScreen';
+import { CareerStatsScreen } from './career/CareerStatsScreen';
+import { checkNewAchievements } from './career/Achievements';
 import { planMatch } from './career/MatchEngine';
 import {
   computeMatchResult,
@@ -138,6 +140,7 @@ async function main() {
   const trainingScreen = new TrainingScreen();
   const seasonSummaryScreen = new SeasonSummaryScreen();
   const transferScreen = new TransferScreen();
+  const careerStatsScreen = new CareerStatsScreen();
 
   function showMainMenu() {
     hud.setMatchUIVisible(false);
@@ -188,6 +191,13 @@ async function main() {
         showHub(store);
         toast('Dinlendin — enerji yenilendi');
       },
+      onStats: () => {
+        careerHub.hide();
+        careerStatsScreen.show(store.data, () => {
+          careerStatsScreen.hide();
+          showHub(store);
+        });
+      },
       onMenu: () => {
         careerHub.hide();
         showMainMenu();
@@ -222,12 +232,17 @@ async function main() {
       return;
     }
     const summary = endSeason(store);
+    checkNewAchievements(store); // sezon ödülleri yeni başarım açabilir
     careerSave.set(store.data);
     seasonSummaryScreen.show(summary, () => {
       seasonSummaryScreen.hide();
       if (summary.retired) {
-        careerSave.clear();
-        showMainMenu();
+        // Emeklilik: kariyer özetini göster, sonra kaydı temizle
+        careerStatsScreen.show(store.data, () => {
+          careerStatsScreen.hide();
+          careerSave.clear();
+          showMainMenu();
+        });
         return;
       }
       const offers = generateOffers(store.data);
@@ -279,10 +294,14 @@ async function main() {
             const outcome = computeMatchResult(plan, game.getMatchStats());
             applyOutcome(store, outcome);
             recordMatchInSeason(store, outcome.rating);
+            const fresh = checkNewAchievements(store);
             careerSave.set(store.data);
             hud.setMatchUIVisible(false);
             matchResultScreen.show(outcome, () => {
               matchResultScreen.hide();
+              fresh.forEach((a, i) =>
+                setTimeout(() => toast(`Başarım: ${a.icon} ${a.label}`), i * 700)
+              );
               afterMatch(store, outcome);
             });
           }

@@ -23,9 +23,20 @@ export class SeasonSummaryScreen {
       )
       .join('');
 
+    const awardsCard =
+      s.awards.length > 0
+        ? `<div class="c-card" style="border-color:#ffd24d">
+            <div class="c-label" style="text-align:left;color:#ffd24d">🏆 SEZON ÖDÜLLERİ</div>
+            ${s.awards
+              .map((a) => `<div class="c-row"><span>${a.icon} ${a.label}</span></div>`)
+              .join('')}
+          </div>`
+        : '';
+
     this.root.innerHTML = `
       <h2>${s.retired ? '🏁 KARİYER BİTTİ' : `${s.season}. SEZON BİTTİ`}</h2>
       <h1>${s.position}. sıra</h1>
+      ${awardsCard}
       <div class="c-card">
         <div class="c-label" style="text-align:left">LİG SIRALAMASI</div>
         ${rows}

@@ -245,6 +245,21 @@ export const GAME_CONFIG = {
         legend: ['Galaktik SK', 'Kıta Avrupası FK'],
       },
     },
+
+    /** Üst seviye: milli takım, sezon ödülleri, başarımlar (Aşama 5). */
+    awards: {
+      /** Gol kralı için gereken sezon golü. */
+      topScorerGoals: 12,
+      /** Altın Top (Ballon d'Or) için sezon golü (lig şampiyonu + yıldız/efsane). */
+      goldenBallGoals: 18,
+      /** Milli takıma çağrı için gereken şöhret. */
+      nationalRepThreshold: 350,
+      /** Milli takıma çağrılınca sezon başına eklenen maç sayısı. */
+      capsPerSeason: 4,
+      /** Ödül kazanınca eklenen şöhret. */
+      topScorerRep: 60,
+      goldenBallRep: 200,
+    },
   },
 } as const;
 

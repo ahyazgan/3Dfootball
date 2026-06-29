@@ -25,6 +25,10 @@ export class PlayerStore {
     }
     if (typeof this.data.seasonMatch !== 'number') this.data.seasonMatch = 0;
     if (typeof this.data.clubPoints !== 'number') this.data.clubPoints = 0;
+    if (!Array.isArray(this.data.achievements)) this.data.achievements = [];
+    if (typeof this.data.nationalCaps !== 'number') this.data.nationalCaps = 0;
+    if (typeof this.data.goldenBalls !== 'number') this.data.goldenBalls = 0;
+    if (typeof this.data.topScorerTitles !== 'number') this.data.topScorerTitles = 0;
   }
 
   /** Boş varsayılan oyuncu (config.career.start'tan). */
@@ -52,6 +56,10 @@ export class PlayerStore {
       currentClub: s.club,
       seasonMatch: 0,
       clubPoints: 0,
+      achievements: [],
+      nationalCaps: 0,
+      goldenBalls: 0,
+      topScorerTitles: 0,
     };
   }
 

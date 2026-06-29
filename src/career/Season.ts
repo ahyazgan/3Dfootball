@@ -1,6 +1,7 @@
 import { GAME_CONFIG } from '../config';
 import type { PlayerStore } from './PlayerStore';
 import type { PlayerData } from './types';
+import { processSeasonEnd, type Award } from './Awards';
 
 export interface StandingRow {
   name: string;
@@ -16,6 +17,8 @@ export interface SeasonSummary {
   seasonGoals: number;
   wage: number;
   retired: boolean;
+  /** Bu sezon kazanılan ödüller (gol kralı, Altın Top, milli takım). */
+  awards: Award[];
 }
 
 /** Maç reytinginden lig puanı (kazanma/beraberlik/kayıp). */
@@ -75,7 +78,11 @@ export function endSeason(
     seasonGoals: d.seasonGoals,
     wage,
     retired: false,
+    awards: [],
   };
+
+  // Ödüller: sezon sayaçları sıfırlanmadan önce (summary golü taşır).
+  summary.awards = processSeasonEnd(store, summary);
 
   // Uygula: maaş + yaşlanma + yeni sezon
   store.addMoney(wage);

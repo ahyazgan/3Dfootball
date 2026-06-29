@@ -6,6 +6,7 @@ export interface HubCallbacks {
   onMatch: () => void;
   onTrain: () => void;
   onRest: () => void;
+  onStats: () => void;
   onMenu: () => void;
 }
 
@@ -55,18 +56,31 @@ export class CareerHub {
           ${stat('TEKNİK', d.technique)}${stat('FİZİK', d.physical)}
         </div>
         <div class="c-row"><span class="c-label">GOL (sezon / toplam)</span><b>${d.seasonGoals} / ${d.totalGoals}</b></div>
+        ${this.trophyRow(d)}
       </div>
       <div class="c-card">
         <button class="cbtn wide" id="h-match">SONRAKİ MAÇ ▶</button>
         <button class="cbtn wide secondary" id="h-train">ANTRENMAN</button>
         <button class="cbtn wide secondary" id="h-rest">DİNLEN</button>
+        <button class="cbtn wide secondary" id="h-stats">KARİYERİM 📖</button>
         <button class="cbtn wide secondary" id="h-menu">Ana Menü</button>
       </div>
     `;
     this.root.querySelector('#h-match')!.addEventListener('click', () => cb.onMatch());
     this.root.querySelector('#h-train')!.addEventListener('click', () => cb.onTrain());
     this.root.querySelector('#h-rest')!.addEventListener('click', () => cb.onRest());
+    this.root.querySelector('#h-stats')!.addEventListener('click', () => cb.onStats());
     this.root.querySelector('#h-menu')!.addEventListener('click', () => cb.onMenu());
+  }
+
+  /** Kupa varsa hub'da küçük bir satır göster. */
+  private trophyRow(d: PlayerData): string {
+    const parts: string[] = [];
+    if (d.goldenBalls > 0) parts.push(`🏆 ${d.goldenBalls}`);
+    if (d.topScorerTitles > 0) parts.push(`🥇 ${d.topScorerTitles}`);
+    if (d.nationalCaps > 0) parts.push(`🇹🇷 ${d.nationalCaps}`);
+    if (parts.length === 0) return '';
+    return `<div class="c-row"><span class="c-label">KUPALAR</span><b>${parts.join(' · ')}</b></div>`;
   }
 
   hide() {

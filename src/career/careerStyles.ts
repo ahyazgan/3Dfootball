@@ -9,8 +9,9 @@ export function injectCareerStyles(): void {
     align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px;
     font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
     background:radial-gradient(ellipse at top,rgba(10,61,31,.86),rgba(3,10,6,.95));
-    overflow-y:auto}
+    overflow-y:auto;animation:c-screen-in .32s ease both}
   .career-screen.hidden{display:none}
+  @keyframes c-screen-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   .career-screen h1{font-size:34px;font-weight:900;color:#fff;text-shadow:0 3px 14px #000;margin:0}
   .career-screen h2{font-size:20px;font-weight:800;color:#9fe0b0;margin:0;letter-spacing:1px}
   .c-card{background:rgba(6,26,14,.7);border:1px solid rgba(255,255,255,.12);
@@ -38,6 +39,12 @@ export function injectCareerStyles(): void {
   .c-bar{height:8px;border-radius:6px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:5px}
   .c-bar > i{display:block;height:100%;background:linear-gradient(90deg,#3bd,#2bd66a)}
   .c-hint{font-size:13px;color:#8fbf9f}
+  .c-badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:4px}
+  .c-badge{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;
+    border-radius:12px;background:rgba(255,210,77,.12);border:1px solid rgba(255,210,77,.4)}
+  .c-badge.locked{background:rgba(0,0,0,.3);border-color:rgba(255,255,255,.1);opacity:.55}
+  .c-badge .bi{font-size:24px}
+  .c-badge .bl{font-size:10px;font-weight:700;color:#cfe9d6;line-height:1.1}
   .c-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:30;
     background:rgba(6,26,14,.92);border:1px solid #2bd66a;color:#9bf3bf;font-weight:700;
     padding:12px 20px;border-radius:999px;animation:c-fade 2.2s ease forwards;pointer-events:none}

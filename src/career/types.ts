@@ -41,6 +41,15 @@ export interface PlayerData {
   seasonMatch: number;
   /** Bu sezon lig puanı. */
   clubPoints: number;
+
+  /** Açılan başarım id'leri. */
+  achievements: string[];
+  /** Milli takım maçı sayısı. */
+  nationalCaps: number;
+  /** Kazanılan Altın Top sayısı. */
+  goldenBalls: number;
+  /** Kazanılan gol kralı sayısı. */
+  topScorerTitles: number;
 }
 
 /** Tier sırası (yükselişten düşüşe ölçek). */
