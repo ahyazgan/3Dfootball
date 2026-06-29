@@ -6,6 +6,7 @@ import { PoseTracker } from './tracking/PoseTracker';
 import { GestureDetector } from './tracking/GestureDetector';
 import { SkeletonRenderer } from './ui/Skeleton';
 import { HUD } from './ui/HUD';
+import { SoundManager } from './audio/SoundManager';
 
 async function main() {
   const sceneCanvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -30,6 +31,9 @@ async function main() {
   const skeleton = new SkeletonRenderer(skeletonCanvas);
   const hud = new HUD(hudRoot);
   const pose = new PoseTracker(video);
+  const sound = new SoundManager();
+
+  hud.onToggleMute = (muted) => sound.setMuted(muted);
 
   const game = new GameLoop({
     canvas: sceneCanvas,
@@ -39,6 +43,7 @@ async function main() {
     gesture,
     skeleton,
     hud,
+    sound,
     state,
     trackingEnabled: false,
   });
@@ -49,6 +54,9 @@ async function main() {
 
   hud.onStart = async () => {
     hud.hideOverlay();
+    // Ses motorunu kullanıcı hareketiyle başlat ve başlangıç düdüğü çal
+    await sound.init().catch(() => {});
+    sound.playWhistle();
     state.start();
     hud.updateStats(state);
     hud.setStatus('Köşeyi seç, bacağını savur!');

@@ -9,6 +9,7 @@ import { PoseTracker } from '../tracking/PoseTracker';
 import { GestureDetector } from '../tracking/GestureDetector';
 import { SkeletonRenderer } from '../ui/Skeleton';
 import { HUD } from '../ui/HUD';
+import { SoundManager } from '../audio/SoundManager';
 import { GameState, type ShotResult } from './GameState';
 
 const ZONE_TARGET_X: Record<DiveZone, number> = {
@@ -25,6 +26,7 @@ export interface GameDeps {
   gesture: GestureDetector;
   skeleton: SkeletonRenderer;
   hud: HUD;
+  sound: SoundManager;
   state: GameState;
   trackingEnabled: boolean;
 }
@@ -194,6 +196,7 @@ export class GameLoop {
     // Topa ileri yuvarlanma + yana fırıl
     const spin = new THREE.Vector3(-speed * 1.5, dir.x * 6, 0);
     this.ball.shoot(vel, spin);
+    this.d.sound.playKick(power);
 
     // Kaleci AI: bazen doğru yönü okur
     const dive = this.chooseDive(zone);
@@ -262,6 +265,9 @@ export class GameLoop {
     }
 
     state.recordResult(result);
+    if (result === 'goal') this.d.sound.playGoal();
+    else if (result === 'save') this.d.sound.playSave();
+    else this.d.sound.playMiss();
     hud.flashResult(result);
     hud.updateStats(state);
     hud.setStatus(

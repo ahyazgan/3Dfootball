@@ -15,7 +15,11 @@ export class HUD {
   private zoneEls: Record<DiveZone, HTMLElement> = {} as never;
   private overlay!: HTMLElement;
 
+  private muteBtn!: HTMLElement;
+  private muted = false;
+
   onStart: () => void = () => {};
+  onToggleMute: (muted: boolean) => void = () => {};
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -65,6 +69,11 @@ export class HUD {
       box-shadow:0 8px 24px rgba(0,0,0,.45);transition:transform .1s}
     .btn:active{transform:scale(.96)}
     .hint{font-size:13px;color:#8fbf9f}
+    .mute-btn{position:absolute;top:14px;right:14px;pointer-events:auto;cursor:pointer;
+      width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.18);
+      background:rgba(6,26,14,.62);backdrop-filter:blur(6px);color:#fff;font-size:20px;
+      display:flex;align-items:center;justify-content:center}
+    .mute-btn:active{transform:scale(.94)}
     .hidden{display:none!important}
     `;
     const style = document.createElement('style');
@@ -87,6 +96,7 @@ export class HUD {
       </div>
       <div class="power-label">GÜÇ</div>
       <div class="power-wrap"><div class="power-fill" id="power-fill"></div></div>
+      <button class="mute-btn" id="mute-btn" title="Ses aç/kapat">🔊</button>
       <div id="overlay"></div>
     `;
     this.goalsEl = q('#s-goals');
@@ -100,6 +110,12 @@ export class HUD {
       right: q('#z-right'),
     };
     this.overlay = q('#overlay');
+    this.muteBtn = q('#mute-btn');
+    this.muteBtn.addEventListener('click', () => {
+      this.muted = !this.muted;
+      this.muteBtn.textContent = this.muted ? '🔇' : '🔊';
+      this.onToggleMute(this.muted);
+    });
   }
 
   showStartScreen(trackingError?: string) {
