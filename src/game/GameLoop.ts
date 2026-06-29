@@ -93,6 +93,7 @@ export class GameLoop {
   private calMaxX = 0;
   private calEndMs = 0;
   private calResolve: ((ok: boolean) => void) | null = null;
+  private lostTrackingMs = 0;
 
   constructor(deps: GameDeps) {
     this.d = deps;
@@ -191,6 +192,7 @@ export class GameLoop {
     this.keeper.reset();
     this.ball.reset();
     this.trail.reset(this.ball.position());
+    this.lostTrackingMs = 0;
   }
 
   /**
@@ -329,6 +331,23 @@ export class GameLoop {
     // Kadrajda değilse uyar (klavye girişini engellemez)
     const showWarn = this.d.trackingEnabled && !tracked && state.phase === 'ready';
     hud.setWarning(showWarn, missing);
+
+    // Otomatik yeniden kalibrasyon: uzun süre kadraj dışı kalıp dönünce
+    // (oyuncu yeniden konumlanmış) 2 adımlı kalibrasyon kendiliğinden başlar.
+    if (this.d.trackingEnabled && state.phase === 'ready') {
+      if (!tracked) {
+        this.lostTrackingMs += dt * 1000;
+      } else if (
+        this.lostTrackingMs > GAME_CONFIG.gesture.autoRecalMs &&
+        !this.calibrating
+      ) {
+        this.lostTrackingMs = 0;
+        void this.calibrate();
+        return; // sonraki kare kalibrasyona girer
+      } else {
+        this.lostTrackingMs = 0;
+      }
+    }
 
     // --- Faz makinesi ---
     if (state.phase === 'ready') {

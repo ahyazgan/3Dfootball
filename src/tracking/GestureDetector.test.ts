@@ -191,6 +191,39 @@ describe('GestureDetector — şut (bacak savurma)', () => {
   });
 });
 
+describe('GestureDetector — otomatik drift düzeltme', () => {
+  it('dururken nötr referans güncel konuma kayar (düğmesiz yeniden kalibrasyon)', () => {
+    const det = new GestureDetector();
+    det.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.45, standingAnkleY: 0.95 });
+    // Oyuncu hafifçe kaydı: mirrored ~0.53 (shoulder 0.47), ayakta duruyor
+    const lm = makeLandmarks({
+      [L_SHOULDER]: { x: 0.47 },
+      [R_SHOULDER]: { x: 0.47 },
+      [L_ANKLE]: { y: 0.95 },
+      [R_ANKLE]: { y: 0.95 },
+    });
+    for (let i = 0; i < 250; i++) det.update(lm);
+    const cal = det.getCalibration();
+    expect(cal.neutralLeanX).toBeGreaterThan(0.51); // nötr kaydı izledi
+    const r = det.update(lm);
+    expect(Math.abs(r.aim)).toBeLessThan(0.15); // yeni nötr = merkez
+  });
+
+  it('belirgin (kasıtlı) eğilmede nötr kaymaz', () => {
+    const det = new GestureDetector();
+    det.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.45, standingAnkleY: 0.95 });
+    // shoulder 0.1 -> mirrored 0.9: aim büyük -> kasıtlı eğilme, adapt etme
+    const lm = makeLandmarks({
+      [L_SHOULDER]: { x: 0.1 },
+      [R_SHOULDER]: { x: 0.1 },
+      [L_ANKLE]: { y: 0.95 },
+      [R_ANKLE]: { y: 0.95 },
+    });
+    for (let i = 0; i < 120; i++) det.update(lm);
+    expect(det.getCalibration().neutralLeanX).toBeCloseTo(0.5, 2);
+  });
+});
+
 describe('GestureDetector — kalibrasyon kontrol listesi', () => {
   it('tüm vücut görünürse hepsi ✓', () => {
     const list = GestureDetector.checklist(legs({}));

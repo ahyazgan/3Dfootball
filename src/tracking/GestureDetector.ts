@@ -190,6 +190,21 @@ export class GestureDetector {
     this.prevLKnee = lKnee;
     this.prevRKnee = rKnee;
 
+    // --- Otomatik drift düzeltme (düğmesiz yeniden kalibrasyon) ---
+    // Oyuncu dururken (nişan ~merkez, ayak yerde, şut yok) nötr referans
+    // yavaşça güncel konuma kayar; kamera/duruş kayması kendiliğinden düzelir.
+    if (this.calibrated && !kick) {
+      const ankleAvg = (lAnkle + rAnkle) / 2;
+      const footDown =
+        this.cal.standingAnkleY - ankleAvg <
+        GAME_CONFIG.gesture.kickRiseFrac * this.cal.bodyScale * 0.5;
+      if (Math.abs(aim) < GAME_CONFIG.gesture.adaptIdleAim && footDown) {
+        const r = GAME_CONFIG.gesture.adaptRate;
+        this.cal.neutralLeanX += (mirroredX - this.cal.neutralLeanX) * r;
+        this.cal.standingAnkleY += (ankleAvg - this.cal.standingAnkleY) * r;
+      }
+    }
+
     return {
       zone,
       aim,

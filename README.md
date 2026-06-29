@@ -6,8 +6,10 @@ ile App Store / Google Play'e paketlenebilir.
 
 ## 🎮 Nasıl Oynanır
 
-1. **BAŞLA**'ya bas, kamera iznini ver. Kısa bir **kalibrasyon** açılır:
-   düz dur, tüm vücudun görünsün (eşikler sana/mesafene göre ayarlanır).
+1. **BAŞLA**'ya bas, kamera iznini ver. **2 adımlı kalibrasyon** açılır:
+   (1) düz dur, (2) sola-sağa yatır — eşikler ve nişan aralığın sana göre
+   ayarlanır. Oyun sırasında duruşun **otomatik** tazelenir; uzun süre
+   kadrajdan çıkıp dönersen kalibrasyon kendiliğinden yeniden başlar.
 2. **Vücudunu sağa/sola eğ** → nişan al. Az eğil hafif köşe, çok eğil sert
    köşe (**sürekli açı**); altta SOL / ORTA / SAĞ göstergesi yanar.
 3. **Bacağını hızla öne/yukarı savur** → top fırlar. İki ayak ayrı izlenir

@@ -42,6 +42,12 @@ export const GAME_CONFIG = {
     zoneAimThreshold: 0.45,
     /** Kişisel eğilme aralığının anlamlı sayılması için minimum sapma. */
     minLeanRange: 0.05,
+    /** Otomatik drift düzeltme: dururken nötr referansın kayma hızı (0..1). */
+    adaptRate: 0.03,
+    /** Drift düzeltme yalnızca nişan |bu| değerinin altındayken (dinlenme) olur. */
+    adaptIdleAim: 0.25,
+    /** Oyuncu bu kadar ms kadrajdan çıkıp dönerse 2 adımlı kalibrasyon yeniden başlar. */
+    autoRecalMs: 4000,
     /** Çift tetiklemeyi önleyen kare sayısı. */
     kickCooldownFrames: 30,
     /** Hızı 0..1 güce eşlerken kullanılan eşik çarpanı. */
