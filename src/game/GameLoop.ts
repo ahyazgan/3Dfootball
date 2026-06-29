@@ -22,6 +22,7 @@ import { HUD } from '../ui/HUD';
 import { SoundManager } from '../audio/SoundManager';
 import { KeeperAI } from './KeeperAI';
 import { ScoreStore } from './ScoreStore';
+import { CalibrationStore } from './CalibrationStore';
 import { GameState, TOTAL_SHOTS, type ShotResult } from './GameState';
 import { GAME_CONFIG, type DifficultyName } from '../config';
 
@@ -35,6 +36,7 @@ export interface GameDeps {
   hud: HUD;
   sound: SoundManager;
   scoreStore: ScoreStore;
+  calibrationStore: CalibrationStore;
   state: GameState;
   trackingEnabled: boolean;
   /** Maç bitince çağrılır (örn. wake lock'ı bırak). */
@@ -201,6 +203,16 @@ export class GameLoop {
    *  2) Sola-sağa yatır — kişisel maksimum eğilme aralığı (nişan kişiselleşir)
    * Kamera yoksa hemen false döner.
    */
+  /** Kayıtlı kalibrasyonu yükle ve uygula (varsa). Sonraki açılışta hatırlama. */
+  tryLoadCalibration(): boolean {
+    const saved = this.d.calibrationStore.get();
+    if (saved) {
+      this.d.gesture.setCalibration(saved);
+      return true;
+    }
+    return false;
+  }
+
   calibrate(): Promise<boolean> {
     if (!this.d.trackingEnabled || !this.d.pose.ready) return Promise.resolve(false);
     this.calSamples = [];
@@ -269,13 +281,15 @@ export class GameLoop {
     const rRight = this.calMaxX - neutralLeanX;
     const rLeft = neutralLeanX - this.calMinX;
 
-    this.d.gesture.setCalibration({
+    const cal = {
       neutralLeanX,
       bodyScale: avg((c) => c.bodyScale),
       standingAnkleY: avg((c) => c.standingAnkleY),
       leanRangeRight: rRight > min ? rRight : undefined,
       leanRangeLeft: rLeft > min ? rLeft : undefined,
-    });
+    };
+    this.d.gesture.setCalibration(cal);
+    this.d.calibrationStore.set(cal); // sonraki açılışta hatırla
   }
 
   private frame = (now: number) => {

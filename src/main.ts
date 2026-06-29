@@ -1,6 +1,7 @@
 import { GameState } from './game/GameState';
 import { GameLoop } from './game/GameLoop';
 import { ScoreStore } from './game/ScoreStore';
+import { CalibrationStore } from './game/CalibrationStore';
 import { PoseTracker } from './tracking/PoseTracker';
 import { GestureDetector } from './tracking/GestureDetector';
 import { SkeletonRenderer } from './ui/Skeleton';
@@ -40,6 +41,7 @@ async function main() {
   const pose = new PoseTracker(video);
   const sound = new SoundManager();
   const scoreStore = new ScoreStore();
+  const calibrationStore = new CalibrationStore();
 
   hud.onToggleMute = (muted) => sound.setMuted(muted);
 
@@ -53,6 +55,7 @@ async function main() {
     hud,
     sound,
     scoreStore,
+    calibrationStore,
     state,
     trackingEnabled: false,
     onGameOver: () => void releaseWake(),
@@ -86,11 +89,13 @@ async function main() {
       }
     }
 
-    // Kamera varsa kalibrasyon yap (nötr poz referansı)
+    // Kamera varsa: kayıtlı kalibrasyon varsa onu kullan, yoksa 2 adımlı yap
     if (pose.ready) {
-      const ok = await game.calibrate();
-      if (!ok) {
-        hud.setStatus('Kalibrasyon atlandı — yine de oynayabilirsin');
+      if (game.tryLoadCalibration()) {
+        hud.setStatus('Önceki kalibrasyon yüklendi ✓');
+      } else {
+        const ok = await game.calibrate();
+        if (!ok) hud.setStatus('Kalibrasyon atlandı — yine de oynayabilirsin');
       }
     }
 

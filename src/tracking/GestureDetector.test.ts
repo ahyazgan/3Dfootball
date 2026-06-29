@@ -197,6 +197,25 @@ describe('GestureDetector — şut (bacak savurma)', () => {
     expect(last).toBeGreaterThan(first); // hız öğrenildi -> aynı vuruş daha güçlü
   });
 
+  it('güç ayak kalkış yüksekliğine de bağlı (aynı hız, yüksek savurma daha sert)', () => {
+    const mk = () => {
+      const d = new GestureDetector();
+      d.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.4, standingAnkleY: 0.95 });
+      return d;
+    };
+    // A: hız 0.10, kalkış 0.10 (0.95 -> 0.85)
+    const dA = mk();
+    dA.update(legs({ lAnkle: 0.95, rAnkle: 0.95, lKnee: 0.75, rKnee: 0.75 }));
+    const a = dA.update(legs({ lAnkle: 0.85, rAnkle: 0.85, lKnee: 0.65, rKnee: 0.65 }));
+    // B: aynı hız 0.10 ama daha yüksekte biter -> kalkış 0.17 (0.88 -> 0.78)
+    const dB = mk();
+    dB.update(legs({ lAnkle: 0.88, rAnkle: 0.88, lKnee: 0.68, rKnee: 0.68 }));
+    const b = dB.update(legs({ lAnkle: 0.78, rAnkle: 0.78, lKnee: 0.58, rKnee: 0.58 }));
+    expect(a.kick).toBe(true);
+    expect(b.kick).toBe(true);
+    expect(b.power).toBeGreaterThan(a.power);
+  });
+
   it('diz görünmüyorsa ayak bileğiyle çalışır (diz kapısı atlanır)', () => {
     const det = new GestureDetector();
     const a = legs({ lAnkle: 0.9, rAnkle: 0.9 });

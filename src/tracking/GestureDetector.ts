@@ -190,10 +190,19 @@ export class GestureDetector {
         const useRight = rValid && (!lValid || rUp >= lUp);
         kickFoot = useRight ? 'right' : 'left';
         const up = useRight ? rUp : lUp;
-        power = Math.max(
-          GAME_CONFIG.gesture.minPower,
-          Math.min(1, (up - effThreshold) / Math.max(0.01, refVel - effThreshold))
-        );
+        const velPower = (up - effThreshold) / Math.max(0.01, refVel - effThreshold);
+        // Kalibreliyken: ayağın ne kadar YÜKSEĞE kalktığı da güce katkı verir
+        let p = velPower;
+        if (this.calibrated) {
+          const lift = this.cal.standingAnkleY - (useRight ? rAnkle : lAnkle);
+          const liftPower = Math.max(
+            0,
+            Math.min(1, lift / (this.cal.bodyScale * GAME_CONFIG.gesture.kickLiftFull))
+          );
+          const w = GAME_CONFIG.gesture.powerLiftWeight;
+          p = velPower * (1 - w) + liftPower * w;
+        }
+        power = Math.max(GAME_CONFIG.gesture.minPower, Math.min(1, p));
         // Tepe hızı öğren: hızlı yüksel, kicks boyunca yavaş düş
         this.kickPeakVel = Math.max(this.kickPeakVel * 0.9, up);
         this.cooldown = this.cooldownFrames;

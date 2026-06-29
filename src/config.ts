@@ -54,6 +54,10 @@ export const GAME_CONFIG = {
     powerRangeMul: 2.5,
     /** En düşük şut gücü (çok hafif vuruşta bile). */
     minPower: 0.25,
+    /** Gücün ayak kalkış yüksekliğine bağlı ağırlığı (kalanı hıza bağlı). */
+    powerLiftWeight: 0.35,
+    /** Tam kalkış gücü için ayağın bacak boyunun bu oranı kadar kalkması (max). */
+    kickLiftFull: 0.6,
     /** Bu görünürlüğün altındaki landmark'lar güvenilmez sayılır. */
     minVisibility: 0.5,
     /** Şut eşiğini ölçekleyen referans vücut boyu (kalça-ayak, normalize). */
