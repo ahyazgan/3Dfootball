@@ -293,7 +293,7 @@ export class HUD {
           ? `<p class="ok" style="color:#2bd66a;font-weight:800">🎉 Yeni rekor!</p>`
           : `<p class="hint">En iyi: ${best}</p>`
       }
-      <p>${state.goals}/${TOTAL_SHOTS} gol · İsabet <b>%${state.accuracy}</b> ·
+      <p>${state.goals}/${state.totalShots} gol · İsabet <b>%${state.accuracy}</b> ·
       En uzun seri <b>${state.bestStreak}</b></p>
       <p>${msg}</p>
       <button class="btn" id="restart-btn">TEKRAR OYNA</button>
@@ -333,7 +333,7 @@ export class HUD {
 
   updateStats(state: GameState) {
     this.goalsEl.textContent = String(state.goals);
-    this.shotsEl.textContent = `${state.shots}/${TOTAL_SHOTS}`;
+    this.shotsEl.textContent = `${state.shots}/${state.totalShots}`;
     this.scoreEl.textContent = String(state.score);
   }
 

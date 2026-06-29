@@ -1,0 +1,72 @@
+import { GAME_CONFIG } from '../config';
+import type { PlayerData, CareerTier } from './types';
+
+const TIER_ORDER: CareerTier[] = ['amateur', 'semipro', 'pro', 'star', 'legend'];
+
+/** Bir kariyer maçının planı. */
+export interface MatchPlan {
+  opponent: string;
+  /** Rakip gücü 1 (zayıf) .. 5 (çok güçlü). */
+  opponentStrength: number;
+  /** Bu maçta oynanacak kritik an (şut fırsatı) sayısı. */
+  criticalMoments: number;
+  difficultyLabel: string;
+  // Kaleci ayarları (GameLoop'a verilir)
+  skillBase: number;
+  skillRamp: number;
+  saveReach: number;
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/**
+ * Oyuncunun tier'ına göre rakip gücünü; rakip gücüne göre de kritik an
+ * sayısını ve kaleci zorluğunu belirler. Oyuncu statları zorluğu hafifletir.
+ * rng test için enjekte edilebilir.
+ */
+export function planMatch(
+  player: PlayerData,
+  rng: () => number = Math.random
+): MatchPlan {
+  const m = GAME_CONFIG.career.match;
+
+  // Rakip gücü: tier + ufak değişim (1..5)
+  const tierIdx = Math.max(0, TIER_ORDER.indexOf(player.careerTier));
+  const variation = Math.round(rng() * 2 - 1); // -1 / 0 / +1
+  const opponentStrength = clamp(tierIdx + 1 + variation, 1, 5);
+
+  // Güçlü rakip = az kritik an (lineer: güç 1 -> max, güç 5 -> min)
+  const t = (opponentStrength - 1) / 4;
+  const criticalMoments = Math.round(lerp(m.maxMoments, m.minMoments, t));
+
+  // Kaleci zorluğu güce göre; oyuncu statları hafifletir
+  const k = m.keeper;
+  const shotEase = (player.shot - 50) / 50; // -1..1
+  const techEase = (player.technique - 50) / 50;
+  const skillBase = clamp(
+    lerp(k.skillBaseMin, k.skillBaseMax, t) - techEase * 0.08,
+    0.1,
+    0.7
+  );
+  const saveReach = clamp(
+    lerp(k.saveReachMin, k.saveReachMax, t) - shotEase * 0.15,
+    1.0,
+    1.9
+  );
+
+  const opponent =
+    m.opponents[Math.floor(rng() * m.opponents.length) % m.opponents.length];
+  const difficultyLabel =
+    opponentStrength <= 2 ? 'Kolay' : opponentStrength === 3 ? 'Orta' : 'Zor';
+
+  return {
+    opponent,
+    opponentStrength,
+    criticalMoments,
+    difficultyLabel,
+    skillBase,
+    skillRamp: k.skillRamp,
+    saveReach,
+  };
+}

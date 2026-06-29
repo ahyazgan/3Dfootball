@@ -148,6 +148,50 @@ export const GAME_CONFIG = {
     },
     /** Dinlenmede kazanılan enerji. */
     restEnergy: 40,
+
+    /** Maç dengesi (rakip gücü -> kritik an + zorluk + ödüller). */
+    match: {
+      /** Kritik an sayısı sınırları (güçlü rakip = az an). */
+      minMoments: 2,
+      maxMoments: 5,
+      /** Maç başına harcanan enerji. */
+      energyCost: 25,
+      /** Rakip kulüp isimleri (rastgele seçilir). */
+      opponents: [
+        'Demirkent SK',
+        'Karadağ FK',
+        'Akdeniz United',
+        'Boğaziçi SK',
+        'Yıldıztepe',
+        'Kuzey FK',
+        'Ege Spor',
+        'Anadolu United',
+      ],
+      /** Kaleci zorluğu: rakip gücü 1..5 -> skillBase/saveReach aralığı. */
+      keeper: {
+        skillBaseMin: 0.18,
+        skillBaseMax: 0.55,
+        skillRamp: 0.4,
+        saveReachMin: 1.15,
+        saveReachMax: 1.7,
+      },
+      /** Maç reytingi hesabı (1-10). */
+      rating: {
+        base: 3.5,
+        perGoalRatio: 5, // (gol/an) * bu
+        scoreBonusDiv: 1500, // skor / bu -> ek puan
+      },
+      /** Ödül katsayıları. */
+      rewards: {
+        moneyPerGoal: 200,
+        moneyPerRating: 40, // (rating) * bu
+        repPerGoal: 8,
+        repPerRatingOver5: 6, // (rating - 5) * bu
+        valuePerRepGain: 600, // kazanılan şöhret * bu
+      },
+      /** Transfer ilgisi eşiği (Aşama 4 için reyting eşiği). */
+      transferRating: 7.5,
+    },
   },
 } as const;
 

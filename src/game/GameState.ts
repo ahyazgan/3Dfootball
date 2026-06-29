@@ -23,6 +23,8 @@ export class GameState {
   saves = 0;
   misses = 0;
   score = 0;
+  /** Bu maçtaki toplam an sayısı (kariyer maçında değişir). */
+  totalShots: number = TOTAL_SHOTS;
   /** Ardışık gol sayısı (combo). */
   streak = 0;
   bestStreak = 0;
@@ -30,7 +32,8 @@ export class GameState {
   /** Son golün puan dökümü (sonuç ekranı/flash için). */
   lastGoalScore: GoalScore | null = null;
 
-  start() {
+  start(totalShots: number = TOTAL_SHOTS) {
+    this.totalShots = Math.max(1, Math.round(totalShots));
     this.phase = 'ready';
     this.shots = 0;
     this.goals = 0;
@@ -74,7 +77,7 @@ export class GameState {
 
   /** Sonuç gösterildikten sonra çağrılır. */
   next() {
-    if (this.shots >= TOTAL_SHOTS) {
+    if (this.shots >= this.totalShots) {
       this.phase = 'over';
     } else {
       this.phase = 'ready';

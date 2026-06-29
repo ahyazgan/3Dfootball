@@ -96,6 +96,7 @@ export class GameLoop {
   private calEndMs = 0;
   private calResolve: ((ok: boolean) => void) | null = null;
   private lostTrackingMs = 0;
+  private careerComplete: (() => void) | null = null;
 
   constructor(deps: GameDeps) {
     this.d = deps;
@@ -195,6 +196,34 @@ export class GameLoop {
     this.ball.reset();
     this.trail.reset(this.ball.position());
     this.lostTrackingMs = 0;
+  }
+
+  /**
+   * Kariyer maçı başlat: verilen kritik an sayısı ve kaleci zorluğuyla.
+   * Maç bitince (quick end ekranı yerine) onComplete çağrılır.
+   */
+  startCareerMatch(
+    opts: { shots: number; skillBase: number; skillRamp: number; saveReach: number },
+    onComplete: () => void
+  ) {
+    this.keeperAI.setSkill(opts.skillBase, opts.skillRamp);
+    this.saveReach = opts.saveReach;
+    this.careerComplete = onComplete;
+    this.d.state.start(opts.shots);
+    this.newGame();
+  }
+
+  /** Maç istatistikleri (kariyer sonucu hesabı için). */
+  getMatchStats() {
+    const s = this.d.state;
+    return {
+      goals: s.goals,
+      saves: s.saves,
+      misses: s.misses,
+      shots: s.shots,
+      score: s.score,
+      bestStreak: s.bestStreak,
+    };
   }
 
   /**
@@ -533,9 +562,17 @@ export class GameLoop {
     state.next();
 
     if (state.isOver) {
-      const isRecord = this.d.scoreStore.trySetBest(state.score);
-      hud.showEndScreen(state, this.d.scoreStore.getBest(), isRecord);
-      this.d.onGameOver?.();
+      if (this.careerComplete) {
+        // Kariyer maçı: quick end ekranı yerine sonucu dışarı ver
+        const cb = this.careerComplete;
+        this.careerComplete = null;
+        this.d.onGameOver?.();
+        cb();
+      } else {
+        const isRecord = this.d.scoreStore.trySetBest(state.score);
+        hud.showEndScreen(state, this.d.scoreStore.getBest(), isRecord);
+        this.d.onGameOver?.();
+      }
     } else {
       hud.setStatus('Köşeyi seç, bacağını savur!');
     }

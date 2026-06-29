@@ -19,6 +19,10 @@ import { CareerSave } from './career/CareerSave';
 import { MainMenu } from './career/MainMenu';
 import { CharacterCreate } from './career/CharacterCreate';
 import { CareerHub } from './career/CareerHub';
+import { MatchIntro } from './career/MatchIntro';
+import { MatchResultScreen } from './career/MatchResultScreen';
+import { planMatch } from './career/MatchEngine';
+import { computeMatchResult, applyOutcome } from './career/MatchResult';
 import { toast } from './career/careerStyles';
 
 async function main() {
@@ -73,17 +77,12 @@ async function main() {
 
   bindWakeLockRefresh();
 
-  hud.onStart = async () => {
-    hud.hideOverlay();
-    // Seçilen zorluğu uygula
-    game.setDifficulty(hud.getDifficulty());
-    // Ekranı uyanık tut + tam ekran (kullanıcı hareketi içinde)
+  // Kamera + kalibrasyonu hazırla (hızlı maç ve kariyer maçı paylaşır)
+  async function ensureTrackingReady() {
     void keepAwake();
     void requestFullscreen().then(() => lockPortrait());
-    // Ses motorunu kullanıcı hareketiyle başlat ve başlangıç düdüğü çal
     await sound.init().catch(() => {});
 
-    // Kamera/poz henüz başlamadıysa başlatmayı dene
     if (!pose.ready && !trackingError) {
       try {
         hud.setStatus('Kamera başlatılıyor...');
@@ -94,8 +93,6 @@ async function main() {
         trackingError = 'Kamera/poz takibi başlatılamadı. Klavye ile oynayabilirsin.';
       }
     }
-
-    // Kamera varsa: kayıtlı kalibrasyon varsa onu kullan, yoksa 2 adımlı yap
     if (pose.ready) {
       if (game.tryLoadCalibration()) {
         hud.setStatus('Önceki kalibrasyon yüklendi ✓');
@@ -104,14 +101,21 @@ async function main() {
         if (!ok) hud.setStatus('Kalibrasyon atlandı — yine de oynayabilirsin');
       }
     }
+  }
 
+  function matchStatusText() {
+    return trackingError ? 'Klavye: ← → yön, BOŞLUK şut' : 'Köşeyi seç, bacağını savur!';
+  }
+
+  hud.onStart = async () => {
+    hud.hideOverlay();
+    game.setDifficulty(hud.getDifficulty());
+    await ensureTrackingReady();
     sound.playWhistle();
     state.start();
     game.newGame();
     hud.updateStats(state);
-    hud.setStatus(
-      trackingError ? 'Klavye: ← → yön, BOŞLUK şut' : 'Köşeyi seç, bacağını savur!'
-    );
+    hud.setStatus(matchStatusText());
   };
 
   // --- Ana menü + kariyer akışı (Aşama 1) ---
@@ -119,6 +123,8 @@ async function main() {
   const mainMenu = new MainMenu();
   const characterCreate = new CharacterCreate();
   const careerHub = new CareerHub();
+  const matchIntro = new MatchIntro();
+  const matchResultScreen = new MatchResultScreen();
 
   function showMainMenu() {
     hud.setMatchUIVisible(false);
@@ -158,7 +164,7 @@ async function main() {
 
   function showHub(store: PlayerStore) {
     careerHub.show(store.data, {
-      onMatch: () => toast('Maç motoru Aşama 2’de gelecek ⚽'),
+      onMatch: () => startCareerMatch(store),
       onTrain: () => toast('Antrenman Aşama 3’te gelecek 💪'),
       onRest: () => {
         store.rest();
@@ -171,6 +177,50 @@ async function main() {
         showMainMenu();
       },
     });
+  }
+
+  function startCareerMatch(store: PlayerStore) {
+    if (store.data.energy < 10) {
+      toast('Enerjin çok düşük — önce dinlen 😴');
+      return;
+    }
+    const plan = planMatch(store.data);
+    careerHub.hide();
+    matchIntro.show(
+      plan,
+      async () => {
+        // Maça başla: kamera/kalibrasyon hazırla, maçı kur
+        matchIntro.hide();
+        hud.setMatchUIVisible(true);
+        await ensureTrackingReady();
+        sound.playWhistle();
+        game.startCareerMatch(
+          {
+            shots: plan.criticalMoments,
+            skillBase: plan.skillBase,
+            skillRamp: plan.skillRamp,
+            saveReach: plan.saveReach,
+          },
+          () => {
+            // Maç bitti: sonucu hesapla, uygula, kaydet, göster
+            const outcome = computeMatchResult(plan, game.getMatchStats());
+            applyOutcome(store, outcome);
+            careerSave.set(store.data);
+            hud.setMatchUIVisible(false);
+            matchResultScreen.show(outcome, () => {
+              matchResultScreen.hide();
+              showHub(store);
+            });
+          }
+        );
+        hud.updateStats(state);
+        hud.setStatus(matchStatusText());
+      },
+      () => {
+        matchIntro.hide();
+        showHub(store);
+      }
+    );
   }
 
   showMainMenu();
