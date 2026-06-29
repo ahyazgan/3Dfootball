@@ -83,6 +83,15 @@ export const GAME_CONFIG = {
     },
   },
 
+  /** Grafik / post-processing. */
+  graphics: {
+    /** Bloom (ışıma) efekti açık mı? (kapatmak için false) */
+    bloom: true,
+    bloomStrength: 0.5,
+    bloomRadius: 0.5,
+    bloomThreshold: 0.8,
+  },
+
   /** Kurtarış kontrolü (GameLoop). */
   save: {
     /** Kalecinin yatayda ulaşabildiği mesafe (m). */

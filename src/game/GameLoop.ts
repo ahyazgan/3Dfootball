@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import type RAPIER from '@dimforge/rapier3d-compat';
 
 import { Stadium } from '../scene/Stadium';
@@ -41,6 +45,8 @@ export class GameLoop {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
+  private composer?: EffectComposer;
+  private bloomPass?: UnrealBloomPass;
 
   private stadium = new Stadium();
   private goal = new Goal();
@@ -109,6 +115,22 @@ export class GameLoop {
     this.confetti.addTo(this.scene);
     this.trail.reset(this.ball.position());
 
+    // Post-processing (bloom) — şeffaf arka plan korunur
+    if (GAME_CONFIG.graphics.bloom) {
+      this.composer = new EffectComposer(this.renderer);
+      const renderPass = new RenderPass(this.scene, this.camera);
+      renderPass.clearAlpha = 0;
+      this.composer.addPass(renderPass);
+      this.bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(1, 1),
+        GAME_CONFIG.graphics.bloomStrength,
+        GAME_CONFIG.graphics.bloomRadius,
+        GAME_CONFIG.graphics.bloomThreshold
+      );
+      this.composer.addPass(this.bloomPass);
+      this.composer.addPass(new OutputPass());
+    }
+
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.bindKeyboard();
@@ -117,8 +139,12 @@ export class GameLoop {
   private resize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const ratio = Math.min(window.devicePixelRatio, 2);
+    this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(w, h, false);
+    this.composer?.setPixelRatio(ratio);
+    this.composer?.setSize(w, h);
+    this.bloomPass?.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
   }
@@ -207,7 +233,8 @@ export class GameLoop {
     this.lastTime = now;
 
     this.update(now, dt);
-    this.renderer.render(this.scene, this.camera);
+    if (this.composer) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(this.frame);
   };
 
