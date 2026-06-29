@@ -28,19 +28,25 @@ ile App Store / Google Play'e paketlenebilir.
 ```
 src/
 ├── main.ts                  # giriş noktası, her şeyi başlatır
+├── config.ts                # tüm ayarlanabilir sabitler (tek nokta)
 ├── scene/
 │   ├── Stadium.ts           # çim, çizgiler, ışıklar, tribün
 │   ├── Goal.ts              # kale (7.32×2.44m) + file
 │   ├── Keeper.ts            # kaleci modeli + dalış animasyonu
-│   └── Ball.ts              # top mesh + Rapier fizik gövdesi
+│   └── Ball.ts              # top mesh + Rapier fizik + falso (Magnus)
 ├── tracking/
 │   ├── PoseTracker.ts       # MediaPipe kurulumu, kamera, landmark akışı
-│   └── GestureDetector.ts   # eğilme (yön) + bacak şutu (tetikleme)
+│   ├── GestureDetector.ts   # eğilme (yön) + bacak şutu + kalibrasyon
+│   └── OneEuroFilter.ts     # düşük gecikmeli yumuşatma
 ├── game/
-│   ├── GameState.ts         # skor, şut sayısı, faz makinesi
-│   └── GameLoop.ts          # ana döngü, fizik, şut çözümü, render
+│   ├── GameState.ts         # skor, combo, şut sayısı, faz makinesi
+│   ├── GameLoop.ts          # ana döngü, fizik, şut çözümü, kalibrasyon
+│   ├── KeeperAI.ts          # kaleci kararı (eğilim okuma, zorluk)
+│   └── ScoreStore.ts        # en iyi skor (localStorage)
+├── audio/
+│   └── SoundManager.ts      # Web Audio ile sentezlenen ses efektleri
 └── ui/
-    ├── HUD.ts               # skor, güç çubuğu, başlat/bitir ekranları
+    ├── HUD.ts               # skor, güç, zorluk, başlat/bitir ekranları
     └── Skeleton.ts          # iskelet çizimi (geri bildirim)
 ```
 
