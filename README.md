@@ -78,12 +78,14 @@ npm run preview
 
 Tüm ayarlanabilir sabitler tek dosyada toplanmıştır: **`src/config.ts`**.
 
-| Grup      | Örnek alanlar                                       | Ne işe yarar              |
-| --------- | --------------------------------------------------- | ------------------------- |
-| `gesture` | `leftThreshold` `rightThreshold` `kickVelThreshold` | yön ve şut algılama eşiği |
-| `keeper`  | `skillBase` `skillRamp` `readAimChance`             | kaleci zorluğu/zekâsı     |
-| `shot`    | `speedMin` `speedMax` `arcBoost` `zoneTargetX`      | şut hızı, yay, hedefleme  |
-| `save`    | `horizReach` `maxHeight`                            | kurtarış toleransı        |
+| Grup         | Örnek alanlar                                | Ne işe yarar               |
+| ------------ | -------------------------------------------- | -------------------------- |
+| `gesture`    | `leanNeutral` `leanDelta` `kickVelThreshold` | yön ve şut algılama eşiği  |
+| `keeper`     | `skillBase` `skillRamp` `readAimChance`      | kaleci zekâsı (varsayılan) |
+| `difficulty` | `presets.kolay/orta/zor`                     | zorluk seviyeleri          |
+| `scoring`    | `goalBase` `cornerBonus` `streakStep`        | puan, köşe bonusu, combo   |
+| `shot`       | `speedMin` `speedMax` `arcBoost` `magnus`    | şut hızı, yay, falso       |
+| `save`       | `horizReach` `maxHeight`                     | kurtarış toleransı         |
 
 > Örnek: "şut çok hassas" → `gesture.kickVelThreshold` değerini yükselt.
 > "kaleci çok kolay" → `keeper.skillBase`/`skillRamp` değerlerini artır.
