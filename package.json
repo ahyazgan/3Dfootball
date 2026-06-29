@@ -1,0 +1,25 @@
+{
+  "name": "futbol-3d",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Hareket kontrollü 3D futbol (penaltı) oyunu — kamerayla vücut takibi",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.19.3",
+    "@mediapipe/tasks-vision": "^0.10.35",
+    "three": "^0.185.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@types/three": "^0.185.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0"
+  }
+}

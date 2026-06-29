@@ -1,0 +1,286 @@
+import * as THREE from 'three';
+import type RAPIER from '@dimforge/rapier3d-compat';
+
+import { Stadium } from '../scene/Stadium';
+import { Goal, GOAL_LINE_Z, GOAL_HEIGHT, GOAL_WIDTH } from '../scene/Goal';
+import { Keeper, type DiveZone } from '../scene/Keeper';
+import { Ball } from '../scene/Ball';
+import { PoseTracker } from '../tracking/PoseTracker';
+import { GestureDetector } from '../tracking/GestureDetector';
+import { SkeletonRenderer } from '../ui/Skeleton';
+import { HUD } from '../ui/HUD';
+import { GameState, type ShotResult } from './GameState';
+
+const ZONE_TARGET_X: Record<DiveZone, number> = {
+  left: -2.6,
+  center: 0,
+  right: 2.6,
+};
+
+export interface GameDeps {
+  canvas: HTMLCanvasElement;
+  rapier: typeof RAPIER;
+  world: RAPIER.World;
+  pose: PoseTracker;
+  gesture: GestureDetector;
+  skeleton: SkeletonRenderer;
+  hud: HUD;
+  state: GameState;
+  trackingEnabled: boolean;
+}
+
+/**
+ * Ana oyun döngüsü: hareket girişini okur, fiziği günceller, şutları
+ * çözümler ve sahneyi render eder.
+ */
+export class GameLoop {
+  private renderer: THREE.WebGLRenderer;
+  private scene = new THREE.Scene();
+  private camera: THREE.PerspectiveCamera;
+
+  private stadium = new Stadium();
+  private goal = new Goal();
+  private keeper = new Keeper();
+  private ball: Ball;
+
+  private d: GameDeps;
+
+  private lastTime = 0;
+  private shotElapsed = 0;
+  private resolved = true;
+  private resultTimer = 0;
+  private physicsAccumulator = 0;
+  private readonly FIXED_STEP = 1 / 60;
+
+  // Klavye yedeği (kamerasız test)
+  private keyZone: DiveZone = 'center';
+  private keyKick = false;
+
+  constructor(deps: GameDeps) {
+    this.d = deps;
+    this.ball = new Ball(deps.rapier, deps.world);
+
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: deps.canvas,
+      antialias: true,
+      alpha: true,
+    });
+    this.renderer.setClearAlpha(0);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+    this.camera.position.set(0, 1.75, 5.6);
+    this.camera.lookAt(0, 1.1, -6);
+
+    this.stadium.addTo(this.scene);
+    this.goal.addTo(this.scene);
+    this.keeper.addTo(this.scene);
+    this.ball.addTo(this.scene);
+
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.bindKeyboard();
+  }
+
+  private resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+  }
+
+  private bindKeyboard() {
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') this.keyZone = 'left';
+      else if (e.key === 'ArrowRight') this.keyZone = 'right';
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') this.keyZone = 'center';
+      else if (e.code === 'Space') {
+        e.preventDefault();
+        this.keyKick = true;
+      }
+    });
+  }
+
+  start() {
+    this.lastTime = performance.now();
+    requestAnimationFrame(this.frame);
+  }
+
+  /** Poz takibi hazır olunca dışarıdan etkinleştir. */
+  setTrackingEnabled(on: boolean) {
+    this.d.trackingEnabled = on;
+  }
+
+  private frame = (now: number) => {
+    const dt = Math.min((now - this.lastTime) / 1000, 1 / 30);
+    this.lastTime = now;
+
+    this.update(now, dt);
+    this.renderer.render(this.scene, this.camera);
+    requestAnimationFrame(this.frame);
+  };
+
+  private update(now: number, dt: number) {
+    const { state, gesture, hud } = this.d;
+
+    // --- Giriş: hareket veya klavye ---
+    let zone: DiveZone = this.keyZone;
+    let kick = false;
+    let power = 0.7;
+    let charge = 0;
+
+    if (this.d.trackingEnabled && this.d.pose.ready) {
+      const landmarks = this.d.pose.detect(now);
+      this.d.skeleton.draw(landmarks);
+      const g = gesture.update(landmarks);
+      zone = g.zone;
+      charge = g.kickCharge;
+      if (g.kick) {
+        kick = true;
+        power = g.power;
+      }
+    }
+    if (this.keyKick) {
+      kick = true;
+      power = 0.8;
+      this.keyKick = false;
+    }
+
+    // --- Faz makinesi ---
+    if (state.phase === 'ready') {
+      hud.setActiveZone(zone);
+      hud.setPower(charge);
+      hud.setStatus('Köşeyi seç, bacağını savur!');
+      if (kick) this.shoot(zone, power);
+    } else if (state.phase === 'shooting') {
+      this.shotElapsed += dt;
+      this.stepShot();
+    } else if (state.phase === 'result') {
+      this.resultTimer -= dt;
+      if (this.resultTimer <= 0) this.finishResult();
+    }
+
+    // --- Fizik (sabit adım, kare hızından bağımsız) + senkron ---
+    this.d.world.timestep = this.FIXED_STEP;
+    this.physicsAccumulator += dt;
+    let steps = 0;
+    while (this.physicsAccumulator >= this.FIXED_STEP && steps < 6) {
+      this.d.world.step();
+      this.physicsAccumulator -= this.FIXED_STEP;
+      steps++;
+    }
+    this.ball.sync();
+    this.keeper.update(dt);
+  }
+
+  private shoot(zone: DiveZone, power: number) {
+    const { state, gesture, hud } = this.d;
+
+    // Hedef nokta ve hız
+    const ballPos = this.ball.position();
+    const targetX = ZONE_TARGET_X[zone];
+    const target = new THREE.Vector3(targetX, 1.5, GOAL_LINE_Z);
+    const dir = target.clone().sub(ballPos).normalize();
+    const speed = THREE.MathUtils.lerp(15, 27, power);
+    const vel = dir.multiplyScalar(speed);
+    vel.y += 1.6; // hafif yay
+
+    // Topa ileri yuvarlanma + yana fırıl
+    const spin = new THREE.Vector3(-speed * 1.5, dir.x * 6, 0);
+    this.ball.shoot(vel, spin);
+
+    // Kaleci AI: bazen doğru yönü okur
+    const dive = this.chooseDive(zone);
+    this.keeper.dive(dive);
+
+    // Durum
+    this.shotElapsed = 0;
+    this.resolved = false;
+    state.phase = 'shooting';
+    gesture.reset();
+    hud.setStatus('');
+    hud.setPower(0);
+  }
+
+  /** Kaleci yön seçimi — zorluk buradan ayarlanır. */
+  private chooseDive(aimZone: DiveZone): DiveZone {
+    const guessChance = 0.45; // doğru tahmin olasılığı
+    if (Math.random() < guessChance) return aimZone;
+    const zones: DiveZone[] = ['left', 'center', 'right'];
+    return zones[Math.floor(Math.random() * zones.length)];
+  }
+
+  private stepShot() {
+    if (this.resolved) return;
+    const pos = this.ball.position();
+
+    // Kale çizgisine ulaştı mı?
+    if (pos.z <= GOAL_LINE_Z + 0.05) {
+      this.resolveShot(pos);
+      return;
+    }
+    // Zaman aşımı (top ulaşamadı) -> aut
+    if (this.shotElapsed > 3.2) {
+      this.resolveShot(pos, true);
+    }
+  }
+
+  private resolveShot(pos: THREE.Vector3, timeout = false) {
+    this.resolved = true;
+    const { state, hud } = this.d;
+
+    const halfW = GOAL_WIDTH / 2;
+    const inGoal =
+      !timeout &&
+      Math.abs(pos.x) < halfW + 0.15 &&
+      pos.y > 0 &&
+      pos.y < GOAL_HEIGHT + 0.15;
+
+    let result: ShotResult;
+    if (!inGoal) {
+      result = 'miss';
+    } else {
+      // Kurtarış: kaleci topun geldiği noktaya yeterince yakın mı?
+      const keeperX = this.keeper.currentX();
+      const horizDist = Math.abs(keeperX - pos.x);
+      const canReach = pos.y < 2.3;
+      if (horizDist < 1.35 && canReach) {
+        result = 'save';
+        // Topu uzaklaştır
+        this.ball.deflect(
+          new THREE.Vector3((pos.x - keeperX) * 4 + Math.sign(pos.x || 1) * 3, 4, 7)
+        );
+      } else {
+        result = 'goal';
+      }
+    }
+
+    state.recordResult(result);
+    hud.flashResult(result);
+    hud.updateStats(state);
+    hud.setStatus(
+      result === 'goal' ? 'GOL!' : result === 'save' ? 'Kaleci kurtardı!' : 'Dışarı!'
+    );
+    this.resultTimer = 1.4;
+  }
+
+  private finishResult() {
+    const { state, hud, gesture } = this.d;
+    this.ball.reset();
+    this.keeper.reset();
+    gesture.reset();
+    state.next();
+
+    if (state.isOver) {
+      hud.showEndScreen(state);
+    } else {
+      hud.setStatus('Köşeyi seç, bacağını savur!');
+    }
+  }
+}
