@@ -7,6 +7,18 @@ export const GAME_CONFIG = {
   /** Bir maçtaki toplam penaltı sayısı. */
   totalShots: 5,
 
+  /** Puanlama. */
+  scoring: {
+    /** Bir golün taban puanı. */
+    goalBase: 100,
+    /** Köşeye (sol/sağ) atılan golün ek puanı (orta = 0). */
+    cornerBonus: 50,
+    /** Her ardışık gol için çarpan artışı (combo). */
+    streakStep: 0.5,
+    /** Combo çarpanının doyduğu ardışık gol sayısı. */
+    maxStreakBonusSteps: 4,
+  },
+
   /** Hareket algılama eşikleri (GestureDetector). */
   gesture: {
     /** Eğilme merkezi (aynalı omuz x). Kalibrasyon bunu kişiye göre ezer. */

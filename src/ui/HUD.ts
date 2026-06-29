@@ -1,4 +1,9 @@
-import { TOTAL_SHOTS, type GameState, type ShotResult } from '../game/GameState';
+import {
+  TOTAL_SHOTS,
+  type GameState,
+  type ShotResult,
+  type GoalScore,
+} from '../game/GameState';
 import type { DiveZone } from '../scene/Keeper';
 
 /**
@@ -9,7 +14,7 @@ export class HUD {
   private root: HTMLElement;
   private goalsEl!: HTMLElement;
   private shotsEl!: HTMLElement;
-  private accEl!: HTMLElement;
+  private scoreEl!: HTMLElement;
   private statusEl!: HTMLElement;
   private powerFill!: HTMLElement;
   private zoneEls: Record<DiveZone, HTMLElement> = {} as never;
@@ -57,6 +62,12 @@ export class HUD {
     .flash{position:absolute;top:42%;left:0;right:0;text-align:center;
       font-size:64px;font-weight:900;pointer-events:none;
       text-shadow:0 4px 24px #000;animation:pop .4s ease-out}
+    .score-pop{position:absolute;top:54%;left:0;right:0;text-align:center;
+      font-size:30px;font-weight:800;color:#ffd24d;pointer-events:none;
+      text-shadow:0 2px 10px #000;animation:rise .9s ease-out forwards}
+    .score-pop b{color:#2bd66a}
+    @keyframes rise{0%{transform:translateY(10px);opacity:0}
+      30%{opacity:1}100%{transform:translateY(-28px);opacity:0}}
     @keyframes pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
     .overlay{position:absolute;inset:0;display:flex;flex-direction:column;
       align-items:center;justify-content:center;text-align:center;gap:18px;
@@ -100,7 +111,7 @@ export class HUD {
       <div class="hud-top">
         <div class="stat"><div class="label">GOL</div><div class="value" id="s-goals">0</div></div>
         <div class="stat"><div class="label">ŞUT</div><div class="value" id="s-shots">0/${TOTAL_SHOTS}</div></div>
-        <div class="stat"><div class="label">İSABET</div><div class="value" id="s-acc">0%</div></div>
+        <div class="stat"><div class="label">SKOR</div><div class="value" id="s-score">0</div></div>
       </div>
       <div class="hud-status" id="hud-status"></div>
       <div class="zone-row">
@@ -117,7 +128,7 @@ export class HUD {
     `;
     this.goalsEl = q('#s-goals');
     this.shotsEl = q('#s-shots');
-    this.accEl = q('#s-acc');
+    this.scoreEl = q('#s-score');
     this.statusEl = q('#hud-status');
     this.powerFill = q('#power-fill');
     this.zoneEls = {
@@ -136,12 +147,13 @@ export class HUD {
     });
   }
 
-  showStartScreen(trackingError?: string) {
+  showStartScreen(trackingError?: string, best = 0) {
     this.overlay.className = 'overlay';
     this.overlay.innerHTML = `
       <h1>⚽ Hareketle Penaltı</h1>
       <p>Kameranın karşısına geç. <b>Vücudunu sağa/sola eğerek</b> köşe seç,
       <b>bacağını hızla savurarak</b> şut çek. 5 atışta kaç gol?</p>
+      ${best > 0 ? `<p class="big" style="font-size:22px">🏆 En iyi: ${best}</p>` : ''}
       ${trackingError ? `<p class="hint">⚠️ ${trackingError}<br/>Klavye ile oyna: ← → yön, BOŞLUK şut.</p>` : ''}
       <button class="btn" id="start-btn">BAŞLA</button>
       <p class="hint">Kamera izni gerekir. Test: ← → yön, BOŞLUK şut.</p>
@@ -177,15 +189,21 @@ export class HUD {
     this.calEl.innerHTML = '';
   }
 
-  showEndScreen(state: GameState) {
+  showEndScreen(state: GameState, best: number, isRecord: boolean) {
     let msg = 'İyi denemeydi!';
     if (state.goals >= 4) msg = 'Müthiş! Gerçek bir golcüsün! 🏆';
     else if (state.goals >= 2) msg = 'Fena değil, devam et! 💪';
     this.overlay.className = 'overlay';
     this.overlay.innerHTML = `
       <h1>Maç Bitti</h1>
-      <div class="big">${state.goals} / ${TOTAL_SHOTS} GOL</div>
-      <p>İsabet: <b>%${state.accuracy}</b> · Kurtarılan: <b>${state.saves}</b> · Kaçan: <b>${state.misses}</b></p>
+      <div class="big">${state.score} PUAN</div>
+      ${
+        isRecord
+          ? `<p class="ok" style="color:#2bd66a;font-weight:800">🎉 Yeni rekor!</p>`
+          : `<p class="hint">En iyi: ${best}</p>`
+      }
+      <p>${state.goals}/${TOTAL_SHOTS} gol · İsabet <b>%${state.accuracy}</b> ·
+      En uzun seri <b>${state.bestStreak}</b></p>
       <p>${msg}</p>
       <button class="btn" id="restart-btn">TEKRAR OYNA</button>
     `;
@@ -225,7 +243,17 @@ export class HUD {
   updateStats(state: GameState) {
     this.goalsEl.textContent = String(state.goals);
     this.shotsEl.textContent = `${state.shots}/${TOTAL_SHOTS}`;
-    this.accEl.textContent = `${state.accuracy}%`;
+    this.scoreEl.textContent = String(state.score);
+  }
+
+  /** Gol puanını ve combo çarpanını ekrana yansıt. */
+  flashGoalScore(gs: GoalScore) {
+    const el = document.createElement('div');
+    el.className = 'score-pop';
+    const combo = gs.multiplier > 1 ? ` <b>x${gs.multiplier}</b>` : '';
+    el.innerHTML = `+${gs.points}${combo}`;
+    this.root.appendChild(el);
+    setTimeout(() => el.remove(), 1100);
   }
 }
 

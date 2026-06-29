@@ -2,6 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 
 import { GameState } from './game/GameState';
 import { GameLoop } from './game/GameLoop';
+import { ScoreStore } from './game/ScoreStore';
 import { PoseTracker } from './tracking/PoseTracker';
 import { GestureDetector } from './tracking/GestureDetector';
 import { SkeletonRenderer } from './ui/Skeleton';
@@ -32,6 +33,7 @@ async function main() {
   const hud = new HUD(hudRoot);
   const pose = new PoseTracker(video);
   const sound = new SoundManager();
+  const scoreStore = new ScoreStore();
 
   hud.onToggleMute = (muted) => sound.setMuted(muted);
 
@@ -44,6 +46,7 @@ async function main() {
     skeleton,
     hud,
     sound,
+    scoreStore,
     state,
     trackingEnabled: false,
   });
@@ -86,7 +89,7 @@ async function main() {
     );
   };
 
-  hud.showStartScreen(trackingError);
+  hud.showStartScreen(trackingError, scoreStore.getBest());
 }
 
 main().catch((err) => {

@@ -11,6 +11,7 @@ import { SkeletonRenderer } from '../ui/Skeleton';
 import { HUD } from '../ui/HUD';
 import { SoundManager } from '../audio/SoundManager';
 import { KeeperAI } from './KeeperAI';
+import { ScoreStore } from './ScoreStore';
 import { GameState, TOTAL_SHOTS, type ShotResult } from './GameState';
 import { GAME_CONFIG } from '../config';
 
@@ -25,6 +26,7 @@ export interface GameDeps {
   skeleton: SkeletonRenderer;
   hud: HUD;
   sound: SoundManager;
+  scoreStore: ScoreStore;
   state: GameState;
   trackingEnabled: boolean;
 }
@@ -56,6 +58,7 @@ export class GameLoop {
   // Klavye yedeği (kamerasız test)
   private keyZone: DiveZone = 'center';
   private keyKick = false;
+  private shotZone: DiveZone = 'center';
 
   // Kalibrasyon durumu
   private calibrating = false;
@@ -274,6 +277,7 @@ export class GameLoop {
     this.keeper.dive(dive);
 
     // Durum
+    this.shotZone = zone;
     this.shotElapsed = 0;
     this.resolved = false;
     state.phase = 'shooting';
@@ -327,9 +331,11 @@ export class GameLoop {
       }
     }
 
-    state.recordResult(result);
-    if (result === 'goal') this.d.sound.playGoal();
-    else if (result === 'save') this.d.sound.playSave();
+    state.recordResult(result, this.shotZone);
+    if (result === 'goal') {
+      this.d.sound.playGoal();
+      if (state.lastGoalScore) hud.flashGoalScore(state.lastGoalScore);
+    } else if (result === 'save') this.d.sound.playSave();
     else this.d.sound.playMiss();
     hud.flashResult(result);
     hud.updateStats(state);
@@ -347,7 +353,8 @@ export class GameLoop {
     state.next();
 
     if (state.isOver) {
-      hud.showEndScreen(state);
+      const isRecord = this.d.scoreStore.trySetBest(state.score);
+      hud.showEndScreen(state, this.d.scoreStore.getBest(), isRecord);
     } else {
       hud.setStatus('Köşeyi seç, bacağını savur!');
     }
