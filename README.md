@@ -85,15 +85,30 @@ npm run preview
 
 Kaleci zorluğu: `src/game/GameLoop.ts` → `chooseDive()` içindeki `guessChance` (0.45).
 
-## 📱 Capacitor ile mobil paketleme (sonraki adım)
+## 📱 Android paketleme (Capacitor — hazır)
+
+Android platformu **kuruldu** (`capacitor.config.ts`, `android/` projesi,
+kamera izinleri). Web bundle'ı `cap sync` ile üretildiği için repoda izlenmez.
+
+Android Studio + JDK 17 kurulu bir makinede:
 
 ```bash
-npx cap init "Futbol 3D" com.ornek.futbol3d --web-dir=dist
-npm run build
-npx cap add android   # ve/veya: npx cap add ios
-npx cap sync
-npx cap open android
+npm install
+npm run cap:sync          # web'i derle + native'e kopyala
+npm run android:open      # derle, senkronla ve Android Studio'da aç
 ```
 
-> Mobilde kamera izni için `AndroidManifest.xml` / `Info.plist` içine kamera
-> izinlerini eklemeyi unutma.
+Hazır npm scriptleri:
+
+| Script | İşlevi |
+|---|---|
+| `npm run cap:sync` | `npm run build` + `cap sync` (web bundle'ı native'e kopyalar) |
+| `npm run android:add` | `cap add android` (platform yoksa yeniden oluşturur) |
+| `npm run android:open` | build + sync + Android Studio'da açar |
+
+Kamera (vücut takibi) için yapılandırılanlar:
+- `AndroidManifest.xml` → `CAMERA` izni + kamera özellikleri
+- `MainActivity.java` → açılışta çalışma anı kamera izni isteği
+
+> **iOS** için: `npm i @capacitor/ios && npx cap add ios`, ardından
+> `Info.plist` içine `NSCameraUsageDescription` ekleyin.

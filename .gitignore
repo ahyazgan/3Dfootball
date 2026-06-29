@@ -4,8 +4,13 @@ dist-ssr/
 *.local
 .DS_Store
 
-# Capacitor (sonra eklenecek)
-/android/
+# Capacitor: native kaynak izlenir; derleme çıktıları android/.gitignore'da
+# (gradle, build/, *.apk, local.properties) hariç tutulur.
+# `cap sync` ile üretilen web bundle ve config dosyaları izlenmez:
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+# iOS henüz eklenmedi; eklenince /ios/ satırını kaldırın.
 /ios/
 
 # Loglar
