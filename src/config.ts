@@ -1,3 +1,5 @@
+export type DifficultyName = 'kolay' | 'orta' | 'zor';
+
 /**
  * Merkezi oyun yapılandırması — tüm ayarlanabilir sabitler burada.
  * Kalibrasyon, denge ve zorluk ayarları için tek dokunma noktası.
@@ -67,6 +69,18 @@ export const GAME_CONFIG = {
     zoneTargetX: { left: -2.6, center: 0, right: 2.6 },
     /** Top kaleye ulaşamazsa kaç saniye sonra "aut" sayılır. */
     timeoutSec: 3.2,
+    /** Magnus (falso) katsayısı — fırıllı top yanal eğri çizer (ince ayar). */
+    magnus: 0.0005,
+  },
+
+  /** Zorluk seviyeleri (kaleci becerisi + kurtarış toleransı). */
+  difficulty: {
+    default: 'orta' as DifficultyName,
+    presets: {
+      kolay: { skillBase: 0.2, skillRamp: 0.3, saveReach: 1.15 },
+      orta: { skillBase: 0.35, skillRamp: 0.43, saveReach: 1.35 },
+      zor: { skillBase: 0.5, skillRamp: 0.45, saveReach: 1.65 },
+    },
   },
 
   /** Kurtarış kontrolü (GameLoop). */

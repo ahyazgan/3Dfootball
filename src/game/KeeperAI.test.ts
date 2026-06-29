@@ -76,6 +76,20 @@ describe('KeeperAI — beceri rampası', () => {
   });
 });
 
+describe('KeeperAI — zorluk', () => {
+  it('düşük beceride blöf, yüksek beceride okuma', () => {
+    const ai = new KeeperAI();
+    ai.setSkill(0.1, 0.0); // çok kolay
+    mockRandom([0.5, 0.0]); // 0.5 > 0.1 -> blöf -> 'left'
+    expect(ai.decide('right', 0, TOTAL)).toBe('left');
+
+    vi.restoreAllMocks();
+    ai.setSkill(0.95, 0.0); // çok zor
+    mockRandom([0.5, 0.0]); // 0.5 < 0.95 -> akıllı + oku -> 'right'
+    expect(ai.decide('right', 0, TOTAL)).toBe('right');
+  });
+});
+
 describe('KeeperAI — reset', () => {
   it('geçmişi temizler', () => {
     const ai = new KeeperAI();

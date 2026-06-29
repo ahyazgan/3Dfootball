@@ -5,6 +5,7 @@ import {
   type GoalScore,
 } from '../game/GameState';
 import type { DiveZone } from '../scene/Keeper';
+import { GAME_CONFIG, type DifficultyName } from '../config';
 
 /**
  * DOM tabanlı HUD: skor göstergeleri, güç çubuğu, yön göstergesi,
@@ -24,9 +25,14 @@ export class HUD {
   private warnEl!: HTMLElement;
   private calEl!: HTMLElement;
   private muted = false;
+  private difficulty: DifficultyName = GAME_CONFIG.difficulty.default;
 
   onStart: () => void = () => {};
   onToggleMute: (muted: boolean) => void = () => {};
+
+  getDifficulty(): DifficultyName {
+    return this.difficulty;
+  }
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -82,6 +88,13 @@ export class HUD {
       box-shadow:0 8px 24px rgba(0,0,0,.45);transition:transform .1s}
     .btn:active{transform:scale(.96)}
     .hint{font-size:13px;color:#8fbf9f}
+    .diff-label{font-size:11px;letter-spacing:2px;color:#9fe0b0;font-weight:700}
+    .diff-row{display:flex;gap:10px}
+    .diff{pointer-events:auto;cursor:pointer;border:2px solid rgba(255,255,255,.25);
+      background:rgba(0,0,0,.3);color:#fff;border-radius:10px;padding:10px 18px;
+      font-size:15px;font-weight:700;transition:all .12s}
+    .diff.active{background:#2bd66a;border-color:#2bd66a;color:#053}
+    .diff:active{transform:scale(.96)}
     .mute-btn{position:absolute;top:14px;right:14px;pointer-events:auto;cursor:pointer;
       width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.18);
       background:rgba(6,26,14,.62);backdrop-filter:blur(6px);color:#fff;font-size:20px;
@@ -154,10 +167,30 @@ export class HUD {
       <p>Kameranın karşısına geç. <b>Vücudunu sağa/sola eğerek</b> köşe seç,
       <b>bacağını hızla savurarak</b> şut çek. 5 atışta kaç gol?</p>
       ${best > 0 ? `<p class="big" style="font-size:22px">🏆 En iyi: ${best}</p>` : ''}
+      <div class="diff-label">ZORLUK</div>
+      <div class="diff-row">
+        <button class="diff" data-d="kolay">Kolay</button>
+        <button class="diff" data-d="orta">Orta</button>
+        <button class="diff" data-d="zor">Zor</button>
+      </div>
       ${trackingError ? `<p class="hint">⚠️ ${trackingError}<br/>Klavye ile oyna: ← → yön, BOŞLUK şut.</p>` : ''}
       <button class="btn" id="start-btn">BAŞLA</button>
       <p class="hint">Kamera izni gerekir. Test: ← → yön, BOŞLUK şut.</p>
     `;
+    const diffBtns = Array.from(
+      this.overlay.querySelectorAll<HTMLButtonElement>('.diff')
+    );
+    const paint = () =>
+      diffBtns.forEach((b) =>
+        b.classList.toggle('active', b.dataset.d === this.difficulty)
+      );
+    diffBtns.forEach((b) =>
+      b.addEventListener('click', () => {
+        this.difficulty = b.dataset.d as DifficultyName;
+        paint();
+      })
+    );
+    paint();
     q('#start-btn').addEventListener('click', () => this.onStart());
   }
 

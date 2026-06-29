@@ -57,6 +57,8 @@ async function main() {
 
   hud.onStart = async () => {
     hud.hideOverlay();
+    // Seçilen zorluğu uygula
+    game.setDifficulty(hud.getDifficulty());
     // Ses motorunu kullanıcı hareketiyle başlat ve başlangıç düdüğü çal
     await sound.init().catch(() => {});
 

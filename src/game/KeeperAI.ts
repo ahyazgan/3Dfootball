@@ -11,6 +11,14 @@ const ZONES: DiveZone[] = ['left', 'center', 'right'];
  */
 export class KeeperAI {
   private history: DiveZone[] = [];
+  private skillBase: number = GAME_CONFIG.keeper.skillBase;
+  private skillRamp: number = GAME_CONFIG.keeper.skillRamp;
+
+  /** Zorluk seviyesine göre beceri aralığını ayarla. */
+  setSkill(base: number, ramp: number) {
+    this.skillBase = base;
+    this.skillRamp = ramp;
+  }
 
   /** Yeni maç için sıfırla. */
   reset() {
@@ -32,7 +40,7 @@ export class KeeperAI {
   decide(aimZone: DiveZone, shotIndex: number, total: number): DiveZone {
     // Beceri maç boyunca skillBase -> (skillBase + skillRamp) arası artar
     const progress = total > 1 ? shotIndex / (total - 1) : 0;
-    const skill = GAME_CONFIG.keeper.skillBase + GAME_CONFIG.keeper.skillRamp * progress;
+    const skill = this.skillBase + this.skillRamp * progress;
 
     if (Math.random() < skill) {
       // Akıllı karar: çoğunlukla anlık eğilmeyi oku, bazen geçmişe göre tahmin et

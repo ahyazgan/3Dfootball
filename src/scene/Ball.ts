@@ -113,6 +113,20 @@ export class Ball {
     return new THREE.Vector3(t.x, t.y, t.z);
   }
 
+  /**
+   * Falso (yanal eğri): yan fırıl (ωy) ile ileri hızdan (vz) doğan yatay
+   * Magnus kuvvetini yalnızca x ekseninde uygular. İleri yuvarlanma fırılının
+   * (ωx) yarattığı büyük dikey/ileri bileşenler kasıtlı olarak dışlanır;
+   * aksi halde arcade ölçekli fırıl topu yere/öne savururdu.
+   * Sürekli kuvvet her alt-adımda impuls olarak uygulanır (impuls = F·dt).
+   */
+  applyMagnus(coefficient: number, dt: number) {
+    const w = this.rb.angvel();
+    const v = this.rb.linvel();
+    const fx = (w.y * v.z - w.z * v.y) * coefficient * dt;
+    this.rb.applyImpulse({ x: fx, y: 0, z: 0 }, true);
+  }
+
   /** Mesh'i fizik gövdesine göre güncelle. */
   sync() {
     const t = this.rb.translation();

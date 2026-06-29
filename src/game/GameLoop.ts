@@ -13,7 +13,7 @@ import { SoundManager } from '../audio/SoundManager';
 import { KeeperAI } from './KeeperAI';
 import { ScoreStore } from './ScoreStore';
 import { GameState, TOTAL_SHOTS, type ShotResult } from './GameState';
-import { GAME_CONFIG } from '../config';
+import { GAME_CONFIG, type DifficultyName } from '../config';
 
 const ZONE_TARGET_X: Record<DiveZone, number> = GAME_CONFIG.shot.zoneTargetX;
 
@@ -54,6 +54,7 @@ export class GameLoop {
   private resultTimer = 0;
   private physicsAccumulator = 0;
   private readonly FIXED_STEP = 1 / 60;
+  private saveReach: number = GAME_CONFIG.save.horizReach;
 
   // Klavye yedeği (kamerasız test)
   private keyZone: DiveZone = 'center';
@@ -125,6 +126,13 @@ export class GameLoop {
   /** Poz takibi hazır olunca dışarıdan etkinleştir. */
   setTrackingEnabled(on: boolean) {
     this.d.trackingEnabled = on;
+  }
+
+  /** Zorluk seviyesini uygula (kaleci becerisi + kurtarış toleransı). */
+  setDifficulty(name: DifficultyName) {
+    const p = GAME_CONFIG.difficulty.presets[name];
+    this.keeperAI.setSkill(p.skillBase, p.skillRamp);
+    this.saveReach = p.saveReach;
   }
 
   /** Yeni maç başlarken kaleci hafızasını ve sahneyi sıfırla. */
@@ -241,7 +249,9 @@ export class GameLoop {
     this.d.world.timestep = this.FIXED_STEP;
     this.physicsAccumulator += dt;
     let steps = 0;
+    const inFlight = state.phase === 'shooting';
     while (this.physicsAccumulator >= this.FIXED_STEP && steps < 6) {
+      if (inFlight) this.ball.applyMagnus(GAME_CONFIG.shot.magnus, this.FIXED_STEP);
       this.d.world.step();
       this.physicsAccumulator -= this.FIXED_STEP;
       steps++;
@@ -320,7 +330,7 @@ export class GameLoop {
       const keeperX = this.keeper.currentX();
       const horizDist = Math.abs(keeperX - pos.x);
       const canReach = pos.y < GAME_CONFIG.save.maxHeight;
-      if (horizDist < GAME_CONFIG.save.horizReach && canReach) {
+      if (horizDist < this.saveReach && canReach) {
         result = 'save';
         // Topu uzaklaştır
         this.ball.deflect(
