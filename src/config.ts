@@ -124,6 +124,31 @@ export const GAME_CONFIG = {
     /** Kalecinin erişebildiği maksimum yükseklik (m). */
     maxHeight: 2.3,
   },
+
+  /** Kariyer modu dengesi (sonraki aşamalarda genişler). */
+  career: {
+    /** Yeni oyuncunun başlangıç değerleri (16 yaş amatör). */
+    start: {
+      money: 500,
+      value: 50000,
+      reputation: 0,
+      energy: 100,
+      age: 16,
+      season: 1,
+      club: 'Yıldızspor Amatör',
+      stats: { shot: 30, pace: 35, technique: 30, physical: 35 },
+    },
+    /** Tier'a yükselmek için gereken şöhret (reputation) eşikleri. */
+    tierThresholds: {
+      amateur: 0,
+      semipro: 100,
+      pro: 350,
+      star: 800,
+      legend: 1800,
+    },
+    /** Dinlenmede kazanılan enerji. */
+    restEnergy: 40,
+  },
 } as const;
 
 export type GameConfig = typeof GAME_CONFIG;

@@ -14,6 +14,12 @@ import {
   requestFullscreen,
   lockPortrait,
 } from './util/screen';
+import { PlayerStore } from './career/PlayerStore';
+import { CareerSave } from './career/CareerSave';
+import { MainMenu } from './career/MainMenu';
+import { CharacterCreate } from './career/CharacterCreate';
+import { CareerHub } from './career/CareerHub';
+import { toast } from './career/careerStyles';
 
 async function main() {
   const sceneCanvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -108,7 +114,66 @@ async function main() {
     );
   };
 
-  hud.showStartScreen(trackingError, scoreStore.getBest());
+  // --- Ana menü + kariyer akışı (Aşama 1) ---
+  const careerSave = new CareerSave();
+  const mainMenu = new MainMenu();
+  const characterCreate = new CharacterCreate();
+  const careerHub = new CareerHub();
+
+  function showMainMenu() {
+    hud.setMatchUIVisible(false);
+    mainMenu.show(
+      {
+        onQuick: () => {
+          mainMenu.hide();
+          hud.setMatchUIVisible(true);
+          hud.showStartScreen(trackingError, scoreStore.getBest());
+        },
+        onCareer: openCareer,
+      },
+      careerSave.exists()
+    );
+  }
+
+  function openCareer() {
+    mainMenu.hide();
+    const saved = careerSave.get();
+    if (saved) {
+      showHub(new PlayerStore(saved));
+    } else {
+      characterCreate.show(
+        (name, position, appearance) => {
+          const store = new PlayerStore(PlayerStore.create(name, position, appearance));
+          careerSave.set(store.data);
+          characterCreate.hide();
+          showHub(store);
+        },
+        () => {
+          characterCreate.hide();
+          showMainMenu();
+        }
+      );
+    }
+  }
+
+  function showHub(store: PlayerStore) {
+    careerHub.show(store.data, {
+      onMatch: () => toast('Maç motoru Aşama 2’de gelecek ⚽'),
+      onTrain: () => toast('Antrenman Aşama 3’te gelecek 💪'),
+      onRest: () => {
+        store.rest();
+        careerSave.set(store.data);
+        showHub(store);
+        toast('Dinlendin — enerji yenilendi');
+      },
+      onMenu: () => {
+        careerHub.hide();
+        showMainMenu();
+      },
+    });
+  }
+
+  showMainMenu();
 }
 
 main().catch((err) => {

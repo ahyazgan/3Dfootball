@@ -124,6 +124,9 @@ export class HUD {
       background:#fff;box-shadow:0 0 12px #2bd66a;transform:translateX(-9px)}
     .cal-end{position:absolute;top:24px;font-size:11px;font-weight:700;color:#9fe0b0}
     .cal-end.l{left:0}.cal-end.r{right:0}
+    .hud-hide-match .hud-top,.hud-hide-match .hud-status,.hud-hide-match .zone-row,
+    .hud-hide-match .power-label,.hud-hide-match .power-wrap,.hud-hide-match .mute-btn,
+    .hud-hide-match .warn{display:none!important}
     .hidden{display:none!important}
     `;
     const style = document.createElement('style');
@@ -209,6 +212,11 @@ export class HUD {
   hideOverlay() {
     this.overlay.className = 'overlay hidden';
     this.overlay.innerHTML = '';
+  }
+
+  /** Maç arayüzünü (üst bar, yön, güç, mute) göster/gizle — menülerde gizlenir. */
+  setMatchUIVisible(on: boolean) {
+    this.root.classList.toggle('hud-hide-match', !on);
   }
 
   /** "Kadrajda değilsin" uyarısını göster/gizle (eksik uzuvları söyler). */
