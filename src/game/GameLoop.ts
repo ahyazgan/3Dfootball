@@ -12,12 +12,9 @@ import { HUD } from '../ui/HUD';
 import { SoundManager } from '../audio/SoundManager';
 import { KeeperAI } from './KeeperAI';
 import { GameState, TOTAL_SHOTS, type ShotResult } from './GameState';
+import { GAME_CONFIG } from '../config';
 
-const ZONE_TARGET_X: Record<DiveZone, number> = {
-  left: -2.6,
-  center: 0,
-  right: 2.6,
-};
+const ZONE_TARGET_X: Record<DiveZone, number> = GAME_CONFIG.shot.zoneTargetX;
 
 export interface GameDeps {
   canvas: HTMLCanvasElement;
@@ -196,11 +193,11 @@ export class GameLoop {
     // Hedef nokta ve hız
     const ballPos = this.ball.position();
     const targetX = ZONE_TARGET_X[zone];
-    const target = new THREE.Vector3(targetX, 1.5, GOAL_LINE_Z);
+    const target = new THREE.Vector3(targetX, GAME_CONFIG.shot.aimHeight, GOAL_LINE_Z);
     const dir = target.clone().sub(ballPos).normalize();
-    const speed = THREE.MathUtils.lerp(15, 27, power);
+    const speed = THREE.MathUtils.lerp(GAME_CONFIG.shot.speedMin, GAME_CONFIG.shot.speedMax, power);
     const vel = dir.multiplyScalar(speed);
-    vel.y += 1.6; // hafif yay
+    vel.y += GAME_CONFIG.shot.arcBoost; // hafif yay
 
     // Topa ileri yuvarlanma + yana fırıl
     const spin = new THREE.Vector3(-speed * 1.5, dir.x * 6, 0);
@@ -231,7 +228,7 @@ export class GameLoop {
       return;
     }
     // Zaman aşımı (top ulaşamadı) -> aut
-    if (this.shotElapsed > 3.2) {
+    if (this.shotElapsed > GAME_CONFIG.shot.timeoutSec) {
       this.resolveShot(pos, true);
     }
   }
@@ -254,8 +251,8 @@ export class GameLoop {
       // Kurtarış: kaleci topun geldiği noktaya yeterince yakın mı?
       const keeperX = this.keeper.currentX();
       const horizDist = Math.abs(keeperX - pos.x);
-      const canReach = pos.y < 2.3;
-      if (horizDist < 1.35 && canReach) {
+      const canReach = pos.y < GAME_CONFIG.save.maxHeight;
+      if (horizDist < GAME_CONFIG.save.horizReach && canReach) {
         result = 'save';
         // Topu uzaklaştır
         this.ball.deflect(

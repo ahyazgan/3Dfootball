@@ -1,4 +1,5 @@
 import type { DiveZone } from '../scene/Keeper';
+import { GAME_CONFIG } from '../config';
 
 const ZONES: DiveZone[] = ['left', 'center', 'right'];
 
@@ -19,7 +20,7 @@ export class KeeperAI {
   /** Oyuncunun seçtiği köşeyi kaydet (her atıştan sonra). */
   record(aimZone: DiveZone) {
     this.history.push(aimZone);
-    if (this.history.length > 6) this.history.shift();
+    if (this.history.length > GAME_CONFIG.keeper.historySize) this.history.shift();
   }
 
   /**
@@ -29,13 +30,13 @@ export class KeeperAI {
    * @param total     toplam atış sayısı
    */
   decide(aimZone: DiveZone, shotIndex: number, total: number): DiveZone {
-    // Beceri maç boyunca 0.35 -> 0.78 arası artar
+    // Beceri maç boyunca skillBase -> (skillBase + skillRamp) arası artar
     const progress = total > 1 ? shotIndex / (total - 1) : 0;
-    const skill = 0.35 + 0.43 * progress;
+    const skill = GAME_CONFIG.keeper.skillBase + GAME_CONFIG.keeper.skillRamp * progress;
 
     if (Math.random() < skill) {
       // Akıllı karar: çoğunlukla anlık eğilmeyi oku, bazen geçmişe göre tahmin et
-      if (Math.random() < 0.7) return aimZone;
+      if (Math.random() < GAME_CONFIG.keeper.readAimChance) return aimZone;
       const predicted = this.mostFrequent();
       return predicted ?? aimZone;
     }
@@ -58,6 +59,6 @@ export class KeeperAI {
       }
     }
     // Belirgin bir eğilim yoksa tahmin etme
-    return bestN >= 2 ? best : null;
+    return bestN >= GAME_CONFIG.keeper.tendencyMinCount ? best : null;
   }
 }

@@ -1,7 +1,9 @@
+import { GAME_CONFIG } from '../config';
+
 export type Phase = 'idle' | 'ready' | 'shooting' | 'result' | 'over';
 export type ShotResult = 'goal' | 'save' | 'miss';
 
-export const TOTAL_SHOTS = 5;
+export const TOTAL_SHOTS = GAME_CONFIG.totalShots;
 
 /**
  * Oyun durumu: skor, şut sayısı ve faz makinesi.

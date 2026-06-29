@@ -1,5 +1,6 @@
 import type { PoseLandmarks } from './PoseTracker';
 import type { DiveZone } from '../scene/Keeper';
+import { GAME_CONFIG } from '../config';
 
 // MediaPipe Pose landmark indeksleri
 const L_SHOULDER = 11;
@@ -24,11 +25,12 @@ export interface GestureState {
  * Landmark akışından eğilme (yön) ve bacak şutu (tetikleme) algılar.
  */
 export class GestureDetector {
-  // Eşikler — kalibrasyon için ayarlanabilir
-  private leftThreshold = 0.42;
-  private rightThreshold = 0.58;
-  private kickVelThreshold = 0.045;
-  private cooldownFrames = 30;
+  // Eşikler — config'ten gelir, kalibrasyonla ayarlanabilir
+  private leftThreshold: number = GAME_CONFIG.gesture.leftThreshold;
+  private rightThreshold: number = GAME_CONFIG.gesture.rightThreshold;
+  private kickVelThreshold: number = GAME_CONFIG.gesture.kickVelThreshold;
+  private cooldownFrames: number = GAME_CONFIG.gesture.kickCooldownFrames;
+  private leanSmoothing: number = GAME_CONFIG.gesture.leanSmoothing;
 
   private smoothLeanX = 0.5;
   private prevAnkleY: number | null = null;
@@ -55,7 +57,8 @@ export class GestureDetector {
     // --- Yön: omuz orta noktası, aynalı (1 - x), yumuşatılmış ---
     const shoulderMidX = (landmarks[L_SHOULDER].x + landmarks[R_SHOULDER].x) / 2;
     const mirroredX = 1 - shoulderMidX;
-    this.smoothLeanX = this.smoothLeanX * 0.8 + mirroredX * 0.2;
+    const s = this.leanSmoothing;
+    this.smoothLeanX = this.smoothLeanX * s + mirroredX * (1 - s);
     const zone = this.zoneFromLean(this.smoothLeanX);
 
     // --- Şut: ayak bileği yukarı hızı ---
@@ -67,12 +70,13 @@ export class GestureDetector {
     if (this.prevAnkleY !== null) {
       // y aşağı doğru artar; yukarı hareket => prev - current > 0
       const upVel = this.prevAnkleY - ankleY;
-      kickCharge = Math.max(0, Math.min(1, upVel / (this.kickVelThreshold * 2.5)));
+      const mul = GAME_CONFIG.gesture.powerRangeMul;
+      kickCharge = Math.max(0, Math.min(1, upVel / (this.kickVelThreshold * mul)));
 
       if (this.cooldown === 0 && upVel > this.kickVelThreshold) {
         kick = true;
-        // Hızı güce çevir (eşik..3x eşik aralığı -> 0..1)
-        const t = (upVel - this.kickVelThreshold) / (this.kickVelThreshold * 2.5);
+        // Hızı güce çevir (eşik..(1+mul)x eşik aralığı -> 0..1)
+        const t = (upVel - this.kickVelThreshold) / (this.kickVelThreshold * mul);
         power = Math.max(0.25, Math.min(1, t));
         this.cooldown = this.cooldownFrames;
       }
