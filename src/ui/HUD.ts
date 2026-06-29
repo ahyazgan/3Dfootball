@@ -199,9 +199,15 @@ export class HUD {
     this.overlay.innerHTML = '';
   }
 
-  /** "Kadrajda değilsin" uyarısını göster/gizle. */
-  setWarning(show: boolean) {
+  /** "Kadrajda değilsin" uyarısını göster/gizle (eksik uzuvları söyler). */
+  setWarning(show: boolean, missing: string[] = []) {
     this.warnEl.classList.toggle('hidden', !show);
+    if (show) {
+      this.warnEl.textContent =
+        missing.length > 0
+          ? `⚠️ ${missing.join(', ')} görünmüyor — geri çekil`
+          : '⚠️ Vücudun kadrajda değil — geri çekil';
+    }
   }
 
   /** Kalibrasyon ekranı: geri sayım + algılama durumu. */

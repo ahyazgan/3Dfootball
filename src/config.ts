@@ -31,6 +31,10 @@ export const GAME_CONFIG = {
     leanSmoothing: 0.8,
     /** Ayak bileği yukarı hızı bu eşiği geçince şut tetiklenir. */
     kickVelThreshold: 0.045,
+    /** Şutun geçerli sayılması için dizin de yükselme oranı (yanlış tetik önler). */
+    kickKneeRatio: 0.3,
+    /** Sürekli nişan: bu sapmada açı ±1'e doyar (tam eğilme). */
+    leanRange: 0.18,
     /** Çift tetiklemeyi önleyen kare sayısı. */
     kickCooldownFrames: 30,
     /** Hızı 0..1 güce eşlerken kullanılan eşik çarpanı. */
@@ -65,8 +69,10 @@ export const GAME_CONFIG = {
     arcBoost: 1.6,
     /** Hedef noktanın yüksekliği (m). */
     aimHeight: 1.5,
-    /** Köşe seçimine göre hedef x konumu (m). */
+    /** Köşe seçimine göre hedef x konumu (m) — klavye/yedek için. */
     zoneTargetX: { left: -2.6, center: 0, right: 2.6 },
+    /** Sürekli nişanın ulaşabildiği en geniş x (m). */
+    maxAimX: 3.0,
     /** Top kaleye ulaşamazsa kaç saniye sonra "aut" sayılır. */
     timeoutSec: 3.2,
     /** Magnus (falso) katsayısı — fırıllı top yanal eğri çizer (ince ayar). */

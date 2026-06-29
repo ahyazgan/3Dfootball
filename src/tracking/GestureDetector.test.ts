@@ -5,6 +5,8 @@ import type { PoseLandmarks } from './PoseTracker';
 // MediaPipe Pose indeksleri (test için)
 const L_SHOULDER = 11;
 const R_SHOULDER = 12;
+const L_KNEE = 25;
+const R_KNEE = 26;
 const L_ANKLE = 27;
 const R_ANKLE = 28;
 
@@ -19,12 +21,22 @@ function makeLandmarks(
   return arr as unknown as PoseLandmarks;
 }
 
-/** Belirli omuz/ayak konumuyla n kare besle, son durumu döndür. */
-function feed(
-  det: GestureDetector,
-  lm: ReturnType<typeof makeLandmarks>,
-  frames: number
-) {
+/** Bacak (diz + ayak bileği) konumu olan kare. Tek/çift ayak desteği. */
+function legs(opts: {
+  lAnkle?: number;
+  rAnkle?: number;
+  lKnee?: number;
+  rKnee?: number;
+}): PoseLandmarks {
+  return makeLandmarks({
+    [L_ANKLE]: { y: opts.lAnkle ?? 0.9 },
+    [R_ANKLE]: { y: opts.rAnkle ?? 0.9 },
+    [L_KNEE]: { y: opts.lKnee ?? 0.7 },
+    [R_KNEE]: { y: opts.rKnee ?? 0.7 },
+  });
+}
+
+function feed(det: GestureDetector, lm: PoseLandmarks, frames: number) {
   let last = det.update(lm);
   for (let i = 1; i < frames; i++) last = det.update(lm);
   return last;
@@ -33,7 +45,6 @@ function feed(
 describe('GestureDetector — yön (eğilme)', () => {
   it('sola eğilince sol köşe seçer', () => {
     const det = new GestureDetector();
-    // Omuzlar sağda (x büyük) -> aynalı x küçük -> sol köşe
     const lm = makeLandmarks({ [L_SHOULDER]: { x: 0.95 }, [R_SHOULDER]: { x: 0.95 } });
     const r = feed(det, lm, 25);
     expect(r.zone).toBe('left');
@@ -54,90 +65,118 @@ describe('GestureDetector — yön (eğilme)', () => {
     const r = feed(det, lm, 25);
     expect(r.zone).toBe('center');
   });
+});
 
-  it('yumuşatma uygular: tek karede ani sıçramaz', () => {
-    const det = new GestureDetector();
-    const lm = makeLandmarks({ [L_SHOULDER]: { x: 1 }, [R_SHOULDER]: { x: 1 } });
-    const r = det.update(lm); // tek kare
-    // 0.5 -> hedef 0 ama %20 harman: ~0.4, henüz tam uçta değil
-    expect(r.leanX).toBeGreaterThan(0.3);
-    expect(r.leanX).toBeLessThan(0.5);
+describe('GestureDetector — sürekli nişan', () => {
+  it('tam sol -> -1, orta -> ~0, tam sağ -> +1', () => {
+    const left = feed(
+      new GestureDetector(),
+      makeLandmarks({ [L_SHOULDER]: { x: 0.95 }, [R_SHOULDER]: { x: 0.95 } }),
+      30
+    );
+    const mid = feed(new GestureDetector(), makeLandmarks(), 30);
+    const right = feed(
+      new GestureDetector(),
+      makeLandmarks({ [L_SHOULDER]: { x: 0.05 }, [R_SHOULDER]: { x: 0.05 } }),
+      30
+    );
+    expect(left.aim).toBeCloseTo(-1, 1);
+    expect(Math.abs(mid.aim)).toBeLessThan(0.1);
+    expect(right.aim).toBeCloseTo(1, 1);
+  });
+
+  it('az eğilme küçük açı verir (sürekli)', () => {
+    // shoulder x 0.46 -> mirrored 0.54 -> dev +0.04 -> aim ~0.22
+    const r = feed(
+      new GestureDetector(),
+      makeLandmarks({ [L_SHOULDER]: { x: 0.46 }, [R_SHOULDER]: { x: 0.46 } }),
+      30
+    );
+    expect(r.aim).toBeGreaterThan(0);
+    expect(r.aim).toBeLessThan(0.5);
   });
 });
 
 describe('GestureDetector — şut (bacak savurma)', () => {
-  it('ayak bileği yeterince hızlı yukarı çıkınca şut tetiklenir', () => {
+  it('ayak bileği + diz birlikte hızla yükselince şut tetiklenir', () => {
     const det = new GestureDetector();
-    det.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 }, [R_ANKLE]: { y: 0.9 } })); // prev=0.9
-    const r = det.update(
-      makeLandmarks({ [L_ANKLE]: { y: 0.83 }, [R_ANKLE]: { y: 0.83 } })
-    );
+    det.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
+    const r = det.update(legs({ lAnkle: 0.83, rAnkle: 0.83, lKnee: 0.63, rKnee: 0.63 }));
     expect(r.kick).toBe(true);
     expect(r.power).toBeGreaterThan(0);
   });
 
-  it('eşik altı yavaş hareket şut tetiklemez', () => {
+  it('diz hareket etmezse (gürültü) şut tetiklenmez', () => {
     const det = new GestureDetector();
-    det.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 }, [R_ANKLE]: { y: 0.9 } }));
-    const r = det.update(
-      makeLandmarks({ [L_ANKLE]: { y: 0.88 }, [R_ANKLE]: { y: 0.88 } })
-    );
+    det.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
+    // ayak bileği zıpladı ama diz sabit -> reddedilir
+    const r = det.update(legs({ lAnkle: 0.78, rAnkle: 0.78, lKnee: 0.7, rKnee: 0.7 }));
     expect(r.kick).toBe(false);
+  });
+
+  it('hangi ayakla vurulduğunu çıkarır (sağ ayak)', () => {
+    const det = new GestureDetector();
+    det.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
+    // sadece sağ bacak savruldu
+    const r = det.update(legs({ lAnkle: 0.9, rAnkle: 0.8, lKnee: 0.7, rKnee: 0.6 }));
+    expect(r.kick).toBe(true);
+    expect(r.kickFoot).toBe('right');
   });
 
   it('cooldown: art arda iki şut tetiklenmez', () => {
     const det = new GestureDetector();
-    det.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 }, [R_ANKLE]: { y: 0.9 } }));
-    const first = det.update(
-      makeLandmarks({ [L_ANKLE]: { y: 0.8 }, [R_ANKLE]: { y: 0.8 } })
-    );
-    const second = det.update(
-      makeLandmarks({ [L_ANKLE]: { y: 0.7 }, [R_ANKLE]: { y: 0.7 } })
-    );
+    det.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
+    const first = det.update(legs({ lAnkle: 0.8, rAnkle: 0.8, lKnee: 0.6, rKnee: 0.6 }));
+    const second = det.update(legs({ lAnkle: 0.7, rAnkle: 0.7, lKnee: 0.5, rKnee: 0.5 }));
     expect(first.kick).toBe(true);
-    expect(second.kick).toBe(false); // cooldown aktif
+    expect(second.kick).toBe(false);
   });
 
   it('güç hıza göre ölçeklenir (sert vuruş daha güçlü)', () => {
     const slow = new GestureDetector();
-    slow.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 }, [R_ANKLE]: { y: 0.9 } }));
+    slow.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
     const slowR = slow.update(
-      makeLandmarks({ [L_ANKLE]: { y: 0.83 }, [R_ANKLE]: { y: 0.83 } })
+      legs({ lAnkle: 0.83, rAnkle: 0.83, lKnee: 0.63, rKnee: 0.63 })
     );
 
     const fast = new GestureDetector();
-    fast.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 }, [R_ANKLE]: { y: 0.9 } }));
-    const fastR = fast.update(
-      makeLandmarks({ [L_ANKLE]: { y: 0.7 }, [R_ANKLE]: { y: 0.7 } })
-    );
+    fast.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
+    const fastR = fast.update(legs({ lAnkle: 0.7, rAnkle: 0.7, lKnee: 0.5, rKnee: 0.5 }));
 
     expect(fastR.power).toBeGreaterThan(slowR.power);
-    expect(slowR.power).toBeGreaterThanOrEqual(0.25); // taban güç
+    expect(slowR.power).toBeGreaterThanOrEqual(0.25);
     expect(fastR.power).toBeLessThanOrEqual(1);
+  });
+
+  it('diz görünmüyorsa ayak bileğiyle çalışır (diz kapısı atlanır)', () => {
+    const det = new GestureDetector();
+    const a = legs({ lAnkle: 0.9, rAnkle: 0.9 });
+    (a[L_KNEE] as { visibility: number }).visibility = 0.1;
+    (a[R_KNEE] as { visibility: number }).visibility = 0.1;
+    det.update(a);
+    const b = legs({ lAnkle: 0.82, rAnkle: 0.82 });
+    (b[L_KNEE] as { visibility: number }).visibility = 0.1;
+    (b[R_KNEE] as { visibility: number }).visibility = 0.1;
+    const r = det.update(b);
+    expect(r.kick).toBe(true);
   });
 });
 
 describe('GestureDetector — kalibrasyon', () => {
   it('nötr merkez kayınca o kişi için orta sayılır', () => {
     const det = new GestureDetector();
-    // Bu kişinin nötr duruşu aynalı x ~0.35 (kameraya göre solda durur)
     det.setCalibration({ neutralLeanX: 0.35, bodyScale: 0.45 });
-    // Aynı 0.35 civarında dururken (shoulder x = 0.65 -> mirrored 0.35) -> orta
     const lm = makeLandmarks({ [L_SHOULDER]: { x: 0.65 }, [R_SHOULDER]: { x: 0.65 } });
     const r = feed(det, lm, 30);
     expect(r.zone).toBe('center');
   });
 
   it('kalibre vücut ölçeği şut eşiğini ölçekler (büyük ölçek = zorlaşır)', () => {
-    // Yakın oyuncu (büyük ölçek) -> eşik yükselir -> aynı hareket tetiklemez
     const near = new GestureDetector();
-    near.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.9 }); // refScale 0.45 -> 2x eşik
-    near.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 }, [R_ANKLE]: { y: 0.9 } }));
-    const r = near.update(
-      makeLandmarks({ [L_ANKLE]: { y: 0.83 }, [R_ANKLE]: { y: 0.83 } })
-    );
-    // upVel 0.07; eşik 0.045*2=0.09 -> tetiklenmez
-    expect(r.kick).toBe(false);
+    near.setCalibration({ neutralLeanX: 0.5, bodyScale: 0.9 }); // 2x eşik
+    near.update(legs({ lAnkle: 0.9, rAnkle: 0.9, lKnee: 0.7, rKnee: 0.7 }));
+    const r = near.update(legs({ lAnkle: 0.83, rAnkle: 0.83, lKnee: 0.63, rKnee: 0.63 }));
+    expect(r.kick).toBe(false); // upVel 0.07 < eşik 0.09
   });
 });
 
@@ -150,15 +189,14 @@ describe('GestureDetector — sağlamlık', () => {
     expect(['left', 'center', 'right']).toContain(r.zone);
   });
 
-  it('anahtar nokta görünmüyorsa takip edilmedi sayılır, şut yok', () => {
+  it('anahtar nokta görünmüyorsa takip edilmedi sayılır + eksik listelenir', () => {
     const det = new GestureDetector();
-    det.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 }, [R_ANKLE]: { y: 0.9 } }));
-    // Omuz görünürlüğü düşük -> tracked false
-    const lm = makeLandmarks({ [L_ANKLE]: { y: 0.6 }, [R_ANKLE]: { y: 0.6 } });
-    (lm[11] as { visibility: number }).visibility = 0.1;
+    const lm = legs({ lAnkle: 0.6, rAnkle: 0.6 });
+    (lm[L_SHOULDER] as { visibility: number }).visibility = 0.1;
     const r = det.update(lm);
     expect(r.tracked).toBe(false);
     expect(r.kick).toBe(false);
+    expect(r.missing).toContain('omuzlar');
   });
 
   it('eksik landmark dizisi (33 altı) şut tetiklemez', () => {
@@ -171,9 +209,9 @@ describe('GestureDetector — sağlamlık', () => {
 
   it('reset sonrası ilk karede şut tetiklenmez', () => {
     const det = new GestureDetector();
-    det.update(makeLandmarks({ [L_ANKLE]: { y: 0.9 } }));
+    det.update(legs({ lAnkle: 0.9, rAnkle: 0.9 }));
     det.reset();
-    const r = det.update(makeLandmarks({ [L_ANKLE]: { y: 0.6 } }));
-    expect(r.kick).toBe(false); // prevAnkleY sıfırlandı + cooldown
+    const r = det.update(legs({ lAnkle: 0.6, rAnkle: 0.6 }));
+    expect(r.kick).toBe(false);
   });
 });

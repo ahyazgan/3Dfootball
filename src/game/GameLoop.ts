@@ -12,7 +12,11 @@ import { Ball } from '../scene/Ball';
 import { BallTrail } from '../scene/BallTrail';
 import { Confetti } from '../scene/Confetti';
 import { PoseTracker } from '../tracking/PoseTracker';
-import { GestureDetector, type GestureSample } from '../tracking/GestureDetector';
+import {
+  GestureDetector,
+  type GestureSample,
+  type Foot,
+} from '../tracking/GestureDetector';
 import { SkeletonRenderer } from '../ui/Skeleton';
 import { HUD } from '../ui/HUD';
 import { SoundManager } from '../audio/SoundManager';
@@ -20,8 +24,6 @@ import { KeeperAI } from './KeeperAI';
 import { ScoreStore } from './ScoreStore';
 import { GameState, TOTAL_SHOTS, type ShotResult } from './GameState';
 import { GAME_CONFIG, type DifficultyName } from '../config';
-
-const ZONE_TARGET_X: Record<DiveZone, number> = GAME_CONFIG.shot.zoneTargetX;
 
 export interface GameDeps {
   canvas: HTMLCanvasElement;
@@ -251,21 +253,27 @@ export class GameLoop {
 
     // --- Giriş: hareket veya klavye ---
     let zone: DiveZone = this.keyZone;
+    let aim = this.keyZone === 'left' ? -1 : this.keyZone === 'right' ? 1 : 0;
     let kick = false;
     let power = 0.7;
     let charge = 0;
     let tracked = true;
+    let kickFoot: Foot | null = null;
+    let missing: string[] = [];
 
     if (this.d.trackingEnabled && this.d.pose.ready) {
       const landmarks = this.d.pose.detect(now);
       this.d.skeleton.draw(landmarks);
       const g = gesture.update(landmarks, now);
       zone = g.zone;
+      aim = g.aim;
       charge = g.kickCharge;
       tracked = g.tracked;
+      missing = g.missing;
       if (g.kick) {
         kick = true;
         power = g.power;
+        kickFoot = g.kickFoot;
       }
     }
     if (this.keyKick) {
@@ -276,14 +284,14 @@ export class GameLoop {
 
     // Kadrajda değilse uyar (klavye girişini engellemez)
     const showWarn = this.d.trackingEnabled && !tracked && state.phase === 'ready';
-    hud.setWarning(showWarn);
+    hud.setWarning(showWarn, missing);
 
     // --- Faz makinesi ---
     if (state.phase === 'ready') {
       hud.setActiveZone(zone);
       hud.setPower(charge);
       if (!showWarn) hud.setStatus('Köşeyi seç, bacağını savur!');
-      if (kick) this.shoot(zone, power);
+      if (kick) this.shoot(zone, aim, power, kickFoot);
     } else if (state.phase === 'shooting') {
       this.shotElapsed += dt;
       this.stepShot();
@@ -328,12 +336,18 @@ export class GameLoop {
     this.camera.lookAt(this.camLookAt);
   }
 
-  private shoot(zone: DiveZone, power: number) {
+  private shoot(zone: DiveZone, aim: number, power: number, foot: Foot | null) {
     const { state, gesture, hud } = this.d;
 
-    // Hedef nokta ve hız
+    // Hedef nokta: sürekli nişan (eğilme miktarı) -> kale içinde x
+    const halfW = GOAL_WIDTH / 2;
+    const margin = 0.5;
+    const targetX = THREE.MathUtils.clamp(
+      aim * GAME_CONFIG.shot.maxAimX,
+      -(halfW - margin),
+      halfW - margin
+    );
     const ballPos = this.ball.position();
-    const targetX = ZONE_TARGET_X[zone];
     const target = new THREE.Vector3(targetX, GAME_CONFIG.shot.aimHeight, GOAL_LINE_Z);
     const dir = target.clone().sub(ballPos).normalize();
     const speed = THREE.MathUtils.lerp(
@@ -344,8 +358,9 @@ export class GameLoop {
     const vel = dir.multiplyScalar(speed);
     vel.y += GAME_CONFIG.shot.arcBoost; // hafif yay
 
-    // Topa ileri yuvarlanma + yana fırıl
-    const spin = new THREE.Vector3(-speed * 1.5, dir.x * 6, 0);
+    // Topa ileri yuvarlanma + yana fırıl. Vuran ayak hafif falso ekler.
+    const footSpin = foot === 'right' ? 1.5 : foot === 'left' ? -1.5 : 0;
+    const spin = new THREE.Vector3(-speed * 1.5, dir.x * 6 + footSpin, 0);
     this.ball.shoot(vel, spin);
     this.d.sound.playKick(power);
 
