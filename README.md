@@ -8,8 +8,11 @@ ile App Store / Google Play'e paketlenebilir.
 
 1. **BAŞLA**'ya bas, kamera iznini ver. Kısa bir **kalibrasyon** açılır:
    düz dur, tüm vücudun görünsün (eşikler sana/mesafene göre ayarlanır).
-2. **Vücudunu sağa/sola eğ** → kalede köşe seç (SOL / ORTA / SAĞ).
-3. **Bacağını hızla öne/yukarı savur** → top o yöne fırlar. Ne kadar hızlı, o kadar sert.
+2. **Vücudunu sağa/sola eğ** → nişan al. Az eğil hafif köşe, çok eğil sert
+   köşe (**sürekli açı**); altta SOL / ORTA / SAĞ göstergesi yanar.
+3. **Bacağını hızla öne/yukarı savur** → top fırlar. İki ayak ayrı izlenir
+   (diz de yükselmeli, yanlış tetik olmasın); hangi ayakla vurduğun **falso**ya
+   etki eder. Ne kadar hızlı savurursan o kadar sert.
 4. Kaleci rastgele dalış yapar; bazen yönünü doğru tahmin eder.
 5. 5 şut sonunda skorun gösterilir.
 
@@ -84,15 +87,15 @@ npm run preview
 
 Tüm ayarlanabilir sabitler tek dosyada toplanmıştır: **`src/config.ts`**.
 
-| Grup         | Örnek alanlar                                | Ne işe yarar               |
-| ------------ | -------------------------------------------- | -------------------------- |
-| `gesture`    | `leanNeutral` `leanDelta` `kickVelThreshold` | yön ve şut algılama eşiği  |
-| `keeper`     | `skillBase` `skillRamp` `readAimChance`      | kaleci zekâsı (varsayılan) |
-| `difficulty` | `presets.kolay/orta/zor`                     | zorluk seviyeleri          |
-| `scoring`    | `goalBase` `cornerBonus` `streakStep`        | puan, köşe bonusu, combo   |
-| `shot`       | `speedMin` `speedMax` `arcBoost` `magnus`    | şut hızı, yay, falso       |
-| `save`       | `horizReach` `maxHeight`                     | kurtarış toleransı         |
-| `graphics`   | `bloom` `bloomStrength` `bloomThreshold`     | ışıma efekti (aç/kapat)    |
+| Grup         | Örnek alanlar                                  | Ne işe yarar               |
+| ------------ | ---------------------------------------------- | -------------------------- |
+| `gesture`    | `leanRange` `kickVelThreshold` `kickKneeRatio` | nişan + şut algılama eşiği |
+| `keeper`     | `skillBase` `skillRamp` `readAimChance`        | kaleci zekâsı (varsayılan) |
+| `difficulty` | `presets.kolay/orta/zor`                       | zorluk seviyeleri          |
+| `scoring`    | `goalBase` `cornerBonus` `streakStep`          | puan, köşe bonusu, combo   |
+| `shot`       | `speedMin` `speedMax` `arcBoost` `magnus`      | şut hızı, yay, falso       |
+| `save`       | `horizReach` `maxHeight`                       | kurtarış toleransı         |
+| `graphics`   | `bloom` `bloomStrength` `bloomThreshold`       | ışıma efekti (aç/kapat)    |
 
 > Örnek: "şut çok hassas" → `gesture.kickVelThreshold` değerini yükselt.
 > "kaleci çok kolay" → `keeper.skillBase`/`skillRamp` değerlerini artır.
