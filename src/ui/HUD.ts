@@ -5,6 +5,7 @@ import {
   type ShotResult,
   type GoalScore,
 } from '../game/GameState';
+import type { CareerStats } from '../game/MatchStore';
 import type { DiveZone } from '../scene/Keeper';
 import { GAME_CONFIG, type DifficultyName } from '../config';
 
@@ -22,6 +23,10 @@ export class HUD {
   private zoneEls: Record<DiveZone, HTMLElement> = {} as never;
   private overlay!: HTMLElement;
 
+  private hudTopEl!: HTMLElement;
+  private scoreboardEl!: HTMLElement;
+  private sbScoreEl!: HTMLElement;
+  private sbMinEl!: HTMLElement;
   private muteBtn!: HTMLElement;
   private warnEl!: HTMLElement;
   private calEl!: HTMLElement;
@@ -53,6 +58,15 @@ export class HUD {
     .hud-status{position:absolute;top:96px;left:0;right:0;text-align:center;
       font-size:20px;font-weight:700;color:#fff;text-shadow:0 2px 8px #000;
       pointer-events:none}
+    .scoreboard{position:absolute;top:14px;left:50%;transform:translateX(-50%);
+      display:flex;align-items:center;gap:12px;background:rgba(6,26,14,.72);
+      backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.14);
+      border-radius:14px;padding:8px 18px;pointer-events:none}
+    .scoreboard .sb-team{font-size:13px;letter-spacing:2px;color:#9fe0b0;font-weight:800}
+    .scoreboard .sb-score{font-size:28px;font-weight:900;color:#fff;min-width:84px;text-align:center}
+    .scoreboard .sb-min{position:absolute;top:54px;left:50%;transform:translateX(-50%);
+      font-size:12px;font-weight:800;color:#ffd24d;letter-spacing:1px;
+      background:rgba(6,26,14,.7);border-radius:8px;padding:2px 10px}
     .zone-row{position:absolute;bottom:118px;left:0;right:0;display:flex;
       justify-content:center;gap:10px;pointer-events:none}
     .zone{width:64px;height:40px;border-radius:10px;border:2px solid rgba(255,255,255,.35);
@@ -104,6 +118,8 @@ export class HUD {
     .mode-btn .ico{font-size:30px;line-height:1.1}
     .mode-btn .name{font-size:16px;font-weight:800;margin-top:2px}
     .mode-btn .desc{font-size:11px;color:#9fc;margin-top:2px}
+    .mode-btn.feat{min-width:300px;border-color:#2bd66a;
+      background:linear-gradient(180deg,rgba(43,214,106,.22),rgba(6,26,14,.55))}
     .mute-btn{position:absolute;top:14px;right:14px;pointer-events:auto;cursor:pointer;
       width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.18);
       background:rgba(6,26,14,.62);backdrop-filter:blur(6px);color:#fff;font-size:20px;
@@ -142,10 +158,16 @@ export class HUD {
 
   private build() {
     this.root.innerHTML = `
-      <div class="hud-top">
+      <div class="hud-top" id="hud-top">
         <div class="stat"><div class="label">GOL</div><div class="value" id="s-goals">0</div></div>
         <div class="stat"><div class="label">ŞUT</div><div class="value" id="s-shots">0/${TOTAL_SHOTS}</div></div>
         <div class="stat"><div class="label">SKOR</div><div class="value" id="s-score">0</div></div>
+      </div>
+      <div class="scoreboard hidden" id="scoreboard">
+        <span class="sb-team">SEN</span>
+        <span class="sb-score" id="sb-score">0 - 0</span>
+        <span class="sb-team">RAKİP</span>
+        <span class="sb-min" id="sb-min">0'</span>
       </div>
       <div class="hud-status" id="hud-status"></div>
       <div class="zone-row">
@@ -163,6 +185,10 @@ export class HUD {
     this.goalsEl = q('#s-goals');
     this.shotsEl = q('#s-shots');
     this.scoreEl = q('#s-score');
+    this.hudTopEl = q('#hud-top');
+    this.scoreboardEl = q('#scoreboard');
+    this.sbScoreEl = q('#sb-score');
+    this.sbMinEl = q('#sb-min');
     this.statusEl = q('#hud-status');
     this.powerFill = q('#power-fill');
     this.zoneEls = {
@@ -196,6 +222,12 @@ export class HUD {
       </div>
       <div class="diff-label">MOD SEÇ — başlamak için dokun</div>
       <div class="mode-row">
+        <div class="mode-btn feat" data-mode="match">
+          <div class="ico">🏟️</div><div class="name">Maç</div>
+          <div class="desc">Korner, serbest vuruş, penaltı — maçı kazan</div>
+        </div>
+      </div>
+      <div class="mode-row">
         <div class="mode-btn" data-mode="penalty">
           <div class="ico">🥅</div><div class="name">Penaltı</div>
           <div class="desc">Bacakla şut</div>
@@ -207,6 +239,10 @@ export class HUD {
         <div class="mode-btn" data-mode="volley">
           <div class="ico">⚡</div><div class="name">Volé</div>
           <div class="desc">Gelen topu falsoyla gole çevir</div>
+        </div>
+        <div class="mode-btn" data-mode="freekick">
+          <div class="ico">🎯</div><div class="name">Serbest Vuruş</div>
+          <div class="desc">Barajı falsoyla aş</div>
         </div>
         <div class="mode-btn" data-mode="mixed">
           <div class="ico">🔀</div><div class="name">Karışık</div>
@@ -335,12 +371,49 @@ export class HUD {
       miss: { t: 'AUT! 😖', c: '#ff6a4d' },
     };
     const { t, c } = map[result];
+    this.flashText(t, c);
+  }
+
+  /** Serbest metni ekrana parlat (örn. "Rakip gol!"). */
+  flashText(text: string, color = '#fff') {
     const el = document.createElement('div');
     el.className = 'flash';
-    el.style.color = c;
-    el.textContent = t;
+    el.style.color = color;
+    el.textContent = text;
     this.root.appendChild(el);
     setTimeout(() => el.remove(), 1100);
+  }
+
+  /** Maç skorboard'unu göster/güncelle (Sen x - y Rakip · dk'). */
+  setMatchScore(home: number, away: number, minute: number) {
+    this.hudTopEl.classList.add('hidden');
+    this.scoreboardEl.classList.remove('hidden');
+    this.sbScoreEl.textContent = `${home} - ${away}`;
+    this.sbMinEl.textContent = `${minute}'`;
+  }
+
+  /** Normal istatistik HUD'una dön (maç dışı modlar). */
+  hideMatchScore() {
+    this.scoreboardEl.classList.add('hidden');
+    this.hudTopEl.classList.remove('hidden');
+  }
+
+  /** Maç sonu ekranı: skor, sonuç ve kariyer istatistikleri. */
+  showMatchEndScreen(state: GameState, career: CareerStats) {
+    const out = state.matchOutcome;
+    const title = out === 'win' ? 'GALİBİYET 🏆' : out === 'draw' ? 'BERABERLİK 🤝' : 'MAĞLUBİYET 😔';
+    const color = out === 'win' ? '#2bd66a' : out === 'draw' ? '#ffd24d' : '#ff6a4d';
+    this.overlay.className = 'overlay';
+    this.overlay.innerHTML = `
+      <h1 style="color:${color}">${title}</h1>
+      <div class="big" style="font-size:40px">SEN ${state.homeScore} - ${state.awayScore} RAKİP</div>
+      <p>İsabet <b>%${state.accuracy}</b> · En uzun seri <b>${state.bestStreak}</b></p>
+      <p class="hint">Kariyer · ${career.played} maç · ${career.wins}G ${career.draws}B ${career.losses}M ·
+      ${career.goalsFor} gol · ${career.points} puan</p>
+      <button class="btn" id="restart-btn">YENİ MAÇ</button>
+      <p class="hint">Menüye dön: sayfayı yenile</p>
+    `;
+    q('#restart-btn').addEventListener('click', () => this.onStart('match'));
   }
 
   setStatus(text: string) {
@@ -381,11 +454,13 @@ function q(sel: string): HTMLElement {
 }
 
 function modeLabel(mode: GameMode): string {
-  return mode === 'penalty'
-    ? 'Penaltı'
-    : mode === 'header'
-      ? 'Kafa Vuruşu'
-      : mode === 'volley'
-        ? 'Volé'
-        : 'Karışık';
+  const labels: Record<GameMode, string> = {
+    penalty: 'Penaltı',
+    header: 'Kafa Vuruşu',
+    volley: 'Volé',
+    freekick: 'Serbest Vuruş',
+    mixed: 'Karışık',
+    match: 'Maç',
+  };
+  return labels[mode];
 }

@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { GameState } from './GameState';
+import { GameState, generateMatch, TOTAL_SHOTS } from './GameState';
 import { GAME_CONFIG } from '../config';
+
+/** Sabit diziden besleyen basit rng (test determinizmi). */
+function seq(values: number[]): () => number {
+  let i = 0;
+  return () => values[i++ % values.length];
+}
 
 const S = GAME_CONFIG.scoring;
 
@@ -119,5 +125,67 @@ describe('GameState — atış modu', () => {
     expect(g.shotTypeFor(0)).toBe('volley');
     expect(g.shotTypeFor(4)).toBe('volley');
     expect(g.currentShotType).toBe('volley');
+  });
+
+  it('freekick modu her atışta serbest vuruştur', () => {
+    const g = new GameState();
+    g.start('freekick');
+    expect(g.currentShotType).toBe('freekick');
+    expect(g.shotTypeFor(3)).toBe('freekick');
+  });
+});
+
+describe('GameState — maç modu', () => {
+  it('start(match) TOTAL_SHOTS kadar fırsat üretir', () => {
+    const g = new GameState();
+    g.start('match', seq([0.1, 0.2, 0.3, 0.4, 0.5]));
+    expect(g.matchEvents).toHaveLength(TOTAL_SHOTS);
+    expect(g.homeScore).toBe(0);
+    expect(g.awayScore).toBe(0);
+  });
+
+  it('currentShotType maç fırsatının tipini izler', () => {
+    const g = new GameState();
+    g.start('match', seq([0.1, 0.2, 0.3, 0.4, 0.5]));
+    expect(g.currentShotType).toBe(g.matchEvents[0].type);
+  });
+
+  it('maçta gol homeScore artırır, addCpuGoal awayScore artırır', () => {
+    const g = new GameState();
+    g.start('match', seq([0.1]));
+    g.recordResult('goal', 'left');
+    expect(g.homeScore).toBe(1);
+    g.addCpuGoal();
+    g.addCpuGoal();
+    expect(g.awayScore).toBe(2);
+  });
+
+  it('matchOutcome skora göre doğru sonucu verir', () => {
+    const g = new GameState();
+    g.start('match', seq([0.1]));
+    g.homeScore = 2;
+    g.awayScore = 1;
+    expect(g.matchOutcome).toBe('win');
+    g.awayScore = 2;
+    expect(g.matchOutcome).toBe('draw');
+    g.awayScore = 3;
+    expect(g.matchOutcome).toBe('loss');
+  });
+
+  it('fırsat dakikaları artan sıradadır ve geçerli tip taşır', () => {
+    const g = new GameState();
+    g.start('match', seq([0.05, 0.35, 0.65, 0.95]));
+    const valid = new Set(['penalty', 'header', 'volley', 'freekick']);
+    let prev = -1;
+    for (const ev of g.matchEvents) {
+      expect(valid.has(ev.type)).toBe(true);
+      expect(ev.minute).toBeGreaterThanOrEqual(prev);
+      prev = ev.minute;
+    }
+  });
+
+  it('generateMatch ilk fırsatta rakip golü üretmez', () => {
+    const events = generateMatch(seq([0.0]));
+    expect(events[0].cpuGoal).toBe(false);
   });
 });

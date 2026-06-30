@@ -1,6 +1,7 @@
 import { GameState } from './game/GameState';
 import { GameLoop } from './game/GameLoop';
 import { ScoreStore } from './game/ScoreStore';
+import { MatchStore } from './game/MatchStore';
 import { CalibrationStore } from './game/CalibrationStore';
 import { PoseTracker } from './tracking/PoseTracker';
 import { GestureDetector } from './tracking/GestureDetector';
@@ -41,6 +42,7 @@ async function main() {
   const pose = new PoseTracker(video);
   const sound = new SoundManager();
   const scoreStore = new ScoreStore();
+  const matchStore = new MatchStore();
   const calibrationStore = new CalibrationStore();
 
   hud.onToggleMute = (muted) => sound.setMuted(muted);
@@ -55,6 +57,7 @@ async function main() {
     hud,
     sound,
     scoreStore,
+    matchStore,
     calibrationStore,
     state,
     trackingEnabled: false,
@@ -103,15 +106,23 @@ async function main() {
     state.start(mode);
     game.newGame();
     hud.updateStats(state);
-    hud.setStatus(
-      state.currentShotType === 'header'
-        ? 'Hazırlan — korner geliyor!'
-        : state.currentShotType === 'volley'
-          ? 'Hazırlan — top geliyor!'
-          : trackingError
-            ? 'Klavye: ← → yön, BOŞLUK şut'
-            : 'Köşeyi seç, bacağını savur!'
-    );
+    if (mode === 'match') {
+      // Maç modu: skorboard + ilk fırsat spikeri oyun döngüsünde ayarlanır
+      hud.setStatus('Maç başlıyor…');
+    } else {
+      hud.hideMatchScore();
+      hud.setStatus(
+        state.currentShotType === 'header'
+          ? 'Hazırlan — korner geliyor!'
+          : state.currentShotType === 'volley'
+            ? 'Hazırlan — top geliyor!'
+            : state.currentShotType === 'freekick'
+              ? 'Serbest vuruş! Barajı aş, köşeye falso çiz.'
+              : trackingError
+                ? 'Klavye: ← → yön, BOŞLUK şut'
+                : 'Köşeyi seç, bacağını savur!'
+      );
+    }
   };
 
   hud.showStartScreen(trackingError, scoreStore.getBest());

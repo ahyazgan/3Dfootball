@@ -8,7 +8,8 @@ import type RAPIER from '@dimforge/rapier3d-compat';
 import { Stadium } from '../scene/Stadium';
 import { Goal, GOAL_LINE_Z, GOAL_HEIGHT, GOAL_WIDTH } from '../scene/Goal';
 import { Keeper, type DiveZone } from '../scene/Keeper';
-import { Ball } from '../scene/Ball';
+import { Ball, BALL_RADIUS } from '../scene/Ball';
+import { Wall, WALL_Z } from '../scene/Wall';
 import { BallTrail } from '../scene/BallTrail';
 import { Confetti } from '../scene/Confetti';
 import { PoseTracker } from '../tracking/PoseTracker';
@@ -22,6 +23,7 @@ import { HUD } from '../ui/HUD';
 import { SoundManager } from '../audio/SoundManager';
 import { KeeperAI } from './KeeperAI';
 import { ScoreStore } from './ScoreStore';
+import { MatchStore } from './MatchStore';
 import { CalibrationStore } from './CalibrationStore';
 import { GameState, TOTAL_SHOTS, type ShotResult } from './GameState';
 import { GAME_CONFIG, type DifficultyName } from '../config';
@@ -89,6 +91,7 @@ export interface GameDeps {
   hud: HUD;
   sound: SoundManager;
   scoreStore: ScoreStore;
+  matchStore: MatchStore;
   calibrationStore: CalibrationStore;
   state: GameState;
   trackingEnabled: boolean;
@@ -112,6 +115,7 @@ export class GameLoop {
   private keeper = new Keeper();
   private keeperAI = new KeeperAI();
   private ball: Ball;
+  private wall = new Wall();
   private trail = new BallTrail();
   private confetti = new Confetti();
 
@@ -142,6 +146,16 @@ export class GameLoop {
   private curStrike = HEADER_STRIKE.clone();
   private curHead = true;
   private volleyPick = 0;
+
+  // Serbest vuruş durumu
+  private fkLive = false;
+  private fkSign = 1;
+  private wallActive = false;
+  private wallPrevZ = 0;
+
+  // Maç modu: fırsat öncesi spiker arası
+  private mEventReady = false;
+  private mIntroTimer = 0;
 
   // Klavye yedeği (kamerasız test)
   private keyZone: DiveZone = 'center';
@@ -181,6 +195,7 @@ export class GameLoop {
     this.stadium.addTo(this.scene);
     this.goal.addTo(this.scene);
     this.keeper.addTo(this.scene);
+    this.wall.addTo(this.scene);
     this.ball.addTo(this.scene);
     this.trail.addTo(this.scene);
     this.confetti.addTo(this.scene);
@@ -255,9 +270,16 @@ export class GameLoop {
     this.keeper.reset();
     this.ball.reset();
     this.trail.reset(this.ball.position());
+    this.wall.hide();
     this.lostTrackingMs = 0;
     this.served = false;
     this.serveCornerSign = 1;
+    this.volleyPick = 0;
+    this.fkLive = false;
+    this.fkSign = 1;
+    this.wallActive = false;
+    this.mEventReady = false;
+    this.mIntroTimer = 0;
   }
 
   /**
@@ -438,17 +460,30 @@ export class GameLoop {
 
     // --- Faz makinesi ---
     if (state.phase === 'ready') {
-      if (servedShot) {
-        // Gelen topu servis et: kafa = yüksek orta, volé = rastgele desen
-        if (!this.served) {
-          if (state.currentShotType === 'header') this.serveHeader();
-          else this.serveVolley();
-        }
+      // Maç modunda her fırsattan önce kısa spiker arası (skor + dakika)
+      if (state.mode === 'match' && !this.mEventReady) this.beginMatchEvent();
+      const introHold = state.mode === 'match' && this.mIntroTimer > 0;
+      if (introHold) {
+        this.mIntroTimer -= dt;
       } else {
-        hud.setActiveZone(zone);
-        hud.setPower(charge);
-        if (!showWarn) hud.setStatus('Köşeyi seç, bacağını savur!');
-        if (kick) this.shoot(zone, aim, power, kickFoot);
+        const type = state.currentShotType;
+        if (type === 'header' || type === 'volley') {
+          // Gelen topu servis et: kafa = yüksek orta, volé = rastgele desen
+          if (!this.served) {
+            if (type === 'header') this.serveHeader();
+            else this.serveVolley();
+          }
+        } else if (type === 'freekick') {
+          if (!this.fkLive) this.placeFreeKick();
+          hud.setActiveZone(zone);
+          hud.setPower(charge);
+          if (kick) this.shootFreeKick(zone, aim, power);
+        } else {
+          hud.setActiveZone(zone);
+          hud.setPower(charge);
+          if (!showWarn) hud.setStatus('Köşeyi seç, bacağını savur!');
+          if (kick) this.shoot(zone, aim, power, kickFoot);
+        }
       }
     } else if (state.phase === 'serving') {
       // Tetik: kafa hareketi, ayak voleyi ya da klavye
@@ -540,6 +575,93 @@ export class GameLoop {
     gesture.reset();
     hud.setStatus('');
     hud.setPower(0);
+  }
+
+  /** Maç fırsatı başlat: rakip golünü uygula, skor + dakika + spiker metni. */
+  private beginMatchEvent() {
+    const { state, hud } = this.d;
+    this.mEventReady = true;
+    const ev = state.currentEvent;
+    if (!ev) {
+      this.mIntroTimer = 0;
+      return;
+    }
+    let intro = `${ev.minute}' — ${ev.intro}`;
+    if (ev.cpuGoal) {
+      state.addCpuGoal();
+      this.d.sound.playWhistle();
+      hud.flashText('Rakip gol!', '#ff6a4d');
+      intro = `${ev.minute}' Rakip gol attı! ${ev.intro}`;
+    }
+    hud.setMatchScore(state.homeScore, state.awayScore, ev.minute);
+    hud.setStatus(intro);
+    this.mIntroTimer = ev.cpuGoal ? 2.4 : 1.8;
+  }
+
+  /** Serbest vuruş topunu yan açıdan yerleştir ve barajı diz. */
+  private placeFreeKick() {
+    this.fkLive = true;
+    this.fkSign *= -1;
+    const xOff = this.fkSign * 2.5;
+    this.ball.setLinearDamping(0.25);
+    this.ball.placeAt(xOff, BALL_RADIUS, -3);
+    // Baraj, topla kale-merkezi arasındaki düz rotayı kapatır
+    this.wall.show(xOff * 0.45);
+    this.wallActive = false;
+    this.d.hud.setActiveZone('center');
+    this.d.hud.setStatus('Serbest vuruş! Barajı aş, köşeye falso çiz.');
+    this.d.hud.setPower(0);
+  }
+
+  /** Serbest vuruş: yüksek yay + güçlü falso ile barajı aşıp köşeye. */
+  private shootFreeKick(zone: DiveZone, aim: number, power: number) {
+    const { state, gesture, hud } = this.d;
+    const halfW = GOAL_WIDTH / 2;
+    const margin = 0.4;
+    const targetX = THREE.MathUtils.clamp(
+      aim * GAME_CONFIG.shot.maxAimX,
+      -(halfW - margin),
+      halfW - margin
+    );
+    const ballPos = this.ball.position();
+    const target = new THREE.Vector3(targetX, 1.4, GOAL_LINE_Z);
+    const dir = target.clone().sub(ballPos).normalize();
+    const speed = THREE.MathUtils.lerp(20, 30, power);
+    const vel = dir.multiplyScalar(speed);
+    vel.y += 2.6; // serbest vuruş daha çok yay (barajı aşar)
+    const spin = new THREE.Vector3(-speed, dir.x * 10, 0); // güçlü falso
+    this.ball.shoot(vel, spin);
+    this.d.sound.playKick(power);
+
+    const dive = this.keeperAI.decide(zone, state.shots, TOTAL_SHOTS);
+    this.keeperAI.record(zone);
+    this.keeper.dive(dive);
+
+    this.shotZone = zone;
+    this.shotElapsed = 0;
+    this.resolved = false;
+    this.fkLive = false;
+    this.wallActive = true;
+    this.wallPrevZ = ballPos.z;
+    state.phase = 'shooting';
+    gesture.reset();
+    hud.setStatus('');
+    hud.setPower(0);
+  }
+
+  /** Top baraja takıldı: aut olarak işle. */
+  private resolveBlocked(pos: THREE.Vector3) {
+    this.resolved = true;
+    this.wallActive = false;
+    const { state, hud } = this.d;
+    this.ball.deflect(new THREE.Vector3(Math.sign(pos.x || 1) * 4, 3, 8));
+    state.recordResult('miss', this.shotZone);
+    this.d.sound.playSave();
+    hud.flashResult('miss');
+    hud.updateStats(state);
+    hud.setStatus('Baraja takıldı!');
+    hud.setPower(0);
+    this.resultTimer = 1.4;
   }
 
   /** Kafa vuruşu (yüksek orta) servisi. */
@@ -675,6 +797,16 @@ export class GameLoop {
     if (this.resolved) return;
     const pos = this.ball.position();
 
+    // Serbest vuruş: top baraj düzlemini geçerken engellendi mi?
+    if (this.wallActive && this.wallPrevZ > WALL_Z && pos.z <= WALL_Z) {
+      this.wallActive = false;
+      if (this.wall.blocks(pos.x, pos.y, BALL_RADIUS)) {
+        this.resolveBlocked(pos);
+        return;
+      }
+    }
+    this.wallPrevZ = pos.z;
+
     // Kale çizgisine ulaştı mı?
     if (pos.z <= GOAL_LINE_Z + 0.05) {
       this.resolveShot(pos);
@@ -741,21 +873,35 @@ export class GameLoop {
     this.ball.reset();
     this.trail.reset(this.ball.position());
     this.keeper.reset();
+    this.wall.hide();
     gesture.reset();
     this.served = false;
+    this.fkLive = false;
+    this.wallActive = false;
+    this.mEventReady = false; // sıradaki maç fırsatı yeniden tanıtılır
     // Kamerayı varsayılana döndür
     this.camTargetPos.copy(this.DEFAULT_CAM_POS);
     this.camLookTarget.copy(this.DEFAULT_LOOK);
     state.next();
 
     if (state.isOver) {
-      const isRecord = this.d.scoreStore.trySetBest(state.score);
-      hud.showEndScreen(state, this.d.scoreStore.getBest(), isRecord);
+      if (state.mode === 'match') {
+        const career = this.d.matchStore.record(state.matchOutcome, state.homeScore);
+        hud.showMatchEndScreen(state, career);
+      } else {
+        const isRecord = this.d.scoreStore.trySetBest(state.score);
+        hud.showEndScreen(state, this.d.scoreStore.getBest(), isRecord);
+      }
       this.d.onGameOver?.();
+    } else if (state.mode === 'match') {
+      // Sıradaki fırsatın spikeri bir sonraki karede beginMatchEvent ile gelir
+      hud.setStatus('…');
     } else if (state.currentShotType === 'header') {
       hud.setStatus('Hazırlan — korner geliyor!');
     } else if (state.currentShotType === 'volley') {
       hud.setStatus('Hazırlan — top geliyor!');
+    } else if (state.currentShotType === 'freekick') {
+      hud.setStatus('Hazırlan — serbest vuruş!');
     } else {
       hud.setStatus('Köşeyi seç, bacağını savur!');
     }

@@ -97,6 +97,14 @@ export class Ball {
     this.sync();
   }
 
+  /** Topu belirli bir noktaya koy ve durdur (örn. serbest vuruş). */
+  placeAt(x: number, y: number, z: number) {
+    this.rb.setTranslation({ x, y, z }, true);
+    this.rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    this.rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    this.sync();
+  }
+
   /** Belirli bir hızla şut at. */
   shoot(velocity: THREE.Vector3, spin: THREE.Vector3) {
     this.rb.setLinvel({ x: velocity.x, y: velocity.y, z: velocity.z }, true);
