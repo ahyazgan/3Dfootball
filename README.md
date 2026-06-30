@@ -102,6 +102,21 @@ Tüm ayarlanabilir sabitler tek dosyada toplanmıştır: **`src/config.ts`**.
 > Örnek: "şut çok hassas" → `gesture.kickVelThreshold` değerini yükselt.
 > "kaleci çok kolay" → `keeper.skillBase`/`skillRamp` değerlerini artır.
 
+## 🏆 Kariyer Modu — derinlik (Aşama 6–9)
+
+Çekirdek kariyer (karakter yaratma → hub → antrenman → sezon → transfer → ödüller)
+üzerine eklenen derinlik katmanları (`src/career/`):
+
+| Aşama | Sistem | Dosyalar |
+| ----- | ------ | -------- |
+| **6 — Maç & rakip** | İsimli kaleciler, **ezeli rakip & derbi** (ek şöhret/moral), **maç içi olaylar** (yağmur, sakat kaleci, gözlemci…) | `MatchEvents.ts`, `MatchEngine.ts` |
+| **7 — Milli takım** | Çağrı + **eleme turnuvası** (Dünya Kupası / Avrupa Şampiyonası): Son 16 → Final, tur ilerledikçe zorlaşan kaleci, uluslararası kupa | `Tournament.ts`, `TournamentScreen.ts` |
+| **8 — Gelişim** | **Form** (maç zorluğunu etkiler), **yetenekler** (Penaltı Uzmanı, Demir Adam…), **sakatlık & fitness**, **yaş eğrisi** (zirve sonrası düşüş) | `Traits.ts`, `Development.ts`, `TraitsScreen.ts` |
+| **9 — Yaşam & ekonomi** | **Takipçi**, **sponsorluklar** (maç başı gelir), **yaşam tarzı** (ev/araba/jet → moral), **basın olayları** (seçimli) | `Business.ts`, `PressEvents.ts`, `BusinessScreen.ts` |
+
+Tüm denge sabitleri `config.career` altında; mantık saf+test edilebilir fonksiyonlarda
+(rng enjekte edilebilir). Eski kayıtlar `PlayerStore` içinde otomatik göç eder.
+
 ## 🧪 Geliştirme (test, lint, format)
 
 ```bash
