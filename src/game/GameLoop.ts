@@ -26,6 +26,11 @@ import { CalibrationStore } from './CalibrationStore';
 import { GameState, TOTAL_SHOTS, type ShotResult } from './GameState';
 import { GAME_CONFIG, type DifficultyName } from '../config';
 
+/** Kafa vuruşu için ideal temas noktası (oyuncunun biraz önünde, kafa hizasında). */
+const HEADER_STRIKE = new THREE.Vector3(0, 1.55, 2.0);
+/** Servis topunun havada kalma süresi (saniye). */
+const SERVE_TRAVEL = 1.5;
+
 export interface GameDeps {
   canvas: HTMLCanvasElement;
   rapier: typeof RAPIER;
@@ -81,6 +86,11 @@ export class GameLoop {
   private camTargetPos = new THREE.Vector3(0, 1.75, 5.6);
   private camLookAt = new THREE.Vector3(0, 1.1, -6);
   private camLookTarget = new THREE.Vector3(0, 1.1, -6);
+
+  // Kafa vuruşu durumu
+  private served = false;
+  private serveElapsed = 0;
+  private serveCornerSign = 1;
 
   // Klavye yedeği (kamerasız test)
   private keyZone: DiveZone = 'center';
@@ -195,6 +205,8 @@ export class GameLoop {
     this.ball.reset();
     this.trail.reset(this.ball.position());
     this.lostTrackingMs = 0;
+    this.served = false;
+    this.serveCornerSign = 1;
   }
 
   /**
@@ -320,6 +332,8 @@ export class GameLoop {
     let tracked = true;
     let kickFoot: Foot | null = null;
     let missing: string[] = [];
+    let gHeader = false;
+    let gHeaderPower = 0.8;
 
     if (this.d.trackingEnabled && this.d.pose.ready) {
       const landmarks = this.d.pose.detect(now);
@@ -330,16 +344,22 @@ export class GameLoop {
       charge = g.kickCharge;
       tracked = g.tracked;
       missing = g.missing;
+      gHeader = g.header;
+      gHeaderPower = g.headerPower;
       if (g.kick) {
         kick = true;
         power = g.power;
         kickFoot = g.kickFoot;
       }
     }
-    if (this.keyKick) {
+
+    // Klavye BOŞLUK: moda göre şut ya da kafa vuruşu olarak yorumlanır
+    const keyAct = this.keyKick;
+    this.keyKick = false;
+    const headerShot = state.currentShotType === 'header';
+    if (keyAct && !headerShot) {
       kick = true;
       power = 0.8;
-      this.keyKick = false;
     }
 
     // Kadrajda değilse uyar (klavye girişini engellemez)
@@ -365,10 +385,18 @@ export class GameLoop {
 
     // --- Faz makinesi ---
     if (state.phase === 'ready') {
-      hud.setActiveZone(zone);
-      hud.setPower(charge);
-      if (!showWarn) hud.setStatus('Köşeyi seç, bacağını savur!');
-      if (kick) this.shoot(zone, aim, power, kickFoot);
+      if (headerShot) {
+        // Kafa vuruşu atışı: topu kornerden servis et
+        if (!this.served) this.serveHeader();
+      } else {
+        hud.setActiveZone(zone);
+        hud.setPower(charge);
+        if (!showWarn) hud.setStatus('Köşeyi seç, bacağını savur!');
+        if (kick) this.shoot(zone, aim, power, kickFoot);
+      }
+    } else if (state.phase === 'serving') {
+      const hit = gHeader || keyAct;
+      this.stepServe(dt, zone, aim, hit, gHeader ? gHeaderPower : 0.8);
     } else if (state.phase === 'shooting') {
       this.shotElapsed += dt;
       this.stepShot();
@@ -456,6 +484,107 @@ export class GameLoop {
     hud.setPower(0);
   }
 
+  /** Kafa vuruşu için topu kornerden kavisle havalandır. */
+  private serveHeader() {
+    this.served = true;
+    this.serveElapsed = 0;
+    this.serveCornerSign *= -1; // her servisi diğer köşeden at
+    const from = new THREE.Vector3(this.serveCornerSign * 5.5, 0.3, GOAL_LINE_Z + 1);
+
+    // Yerçekimi altında SERVE_TRAVEL saniyede HEADER_STRIKE'a varacak balistik hız
+    const g = 9.81;
+    const vel = new THREE.Vector3(
+      (HEADER_STRIKE.x - from.x) / SERVE_TRAVEL,
+      (HEADER_STRIKE.y - from.y) / SERVE_TRAVEL + 0.5 * g * SERVE_TRAVEL,
+      (HEADER_STRIKE.z - from.z) / SERVE_TRAVEL
+    );
+    this.ball.setLinearDamping(0.02); // servis sırasında neredeyse balistik
+    this.ball.serve(from, vel, new THREE.Vector3(3, 5, 0));
+    this.d.sound.playServe();
+
+    this.d.state.phase = 'serving';
+    this.d.hud.setPower(0);
+    this.d.hud.setStatus('Topu izle — tam zamanında kafa vur!');
+  }
+
+  /** Servis fazı: temas penceresini ve zamanlamayı kontrol et. */
+  private stepServe(
+    dt: number,
+    zone: DiveZone,
+    aim: number,
+    hit: boolean,
+    inputPower: number
+  ) {
+    this.serveElapsed += dt;
+    const pos = this.ball.position();
+    const dist = pos.distanceTo(HEADER_STRIKE);
+    // Temas penceresi: top oyuncunun kafa bölgesinden geçerken
+    const inWindow = pos.z > 0.0 && pos.y > 0.7 && pos.y < 2.7;
+
+    this.d.hud.setActiveZone(zone);
+    // Zamanlama göstergesi: ideale yakınlık
+    this.d.hud.setPower(inWindow ? Math.max(0, 1 - dist / 1.4) : 0);
+
+    if (hit && inWindow) {
+      const closeness = Math.max(0.25, Math.min(1, 1 - dist / 1.4));
+      const power = Math.min(1, closeness * 0.7 + inputPower * 0.3);
+      this.headerStrike(zone, aim, power);
+      return;
+    }
+
+    // Pencere kaçtı: top oyuncuyu geçti, yere düştü ya da zaman aşımı
+    if (this.serveElapsed > 4 || pos.z > 4.5 || (pos.y < 0.18 && pos.z > 0.5)) {
+      this.resolveMissedHeader();
+    }
+  }
+
+  /** Kafa ile topa vur: hedefe doğru hız ver, kaleci dalsın. */
+  private headerStrike(zone: DiveZone, aim: number, power: number) {
+    const { state, gesture, hud } = this.d;
+    const halfW = GOAL_WIDTH / 2;
+    const margin = 0.5;
+    const targetX = THREE.MathUtils.clamp(
+      aim * GAME_CONFIG.shot.maxAimX,
+      -(halfW - margin),
+      halfW - margin
+    );
+    const ballPos = this.ball.position();
+    const target = new THREE.Vector3(targetX, 1.3, GOAL_LINE_Z);
+    const dir = target.clone().sub(ballPos).normalize();
+    const speed = THREE.MathUtils.lerp(12, 22, power);
+    const vel = dir.multiplyScalar(speed);
+    vel.y += 1.2;
+    const spin = new THREE.Vector3(-speed, dir.x * 5, 0);
+    this.ball.setLinearDamping(0.25); // normal sürtünmeye dön
+    this.ball.shoot(vel, spin);
+    this.d.sound.playHeader(power);
+
+    const dive = this.keeperAI.decide(zone, state.shots, TOTAL_SHOTS);
+    this.keeperAI.record(zone);
+    this.keeper.dive(dive);
+
+    this.shotZone = zone;
+    this.shotElapsed = 0;
+    this.resolved = false;
+    state.phase = 'shooting';
+    gesture.reset();
+    hud.setStatus('');
+    hud.setPower(0);
+  }
+
+  /** Kafa vuruşu kaçırıldı: doğrudan aut olarak işle. */
+  private resolveMissedHeader() {
+    const { state, hud } = this.d;
+    this.ball.setLinearDamping(0.25);
+    state.recordResult('miss');
+    this.d.sound.playMiss();
+    hud.flashResult('miss');
+    hud.updateStats(state);
+    hud.setStatus('Kafayı kaçırdın!');
+    hud.setPower(0);
+    this.resultTimer = 1.4;
+  }
+
   private stepShot() {
     if (this.resolved) return;
     const pos = this.ball.position();
@@ -527,6 +656,7 @@ export class GameLoop {
     this.trail.reset(this.ball.position());
     this.keeper.reset();
     gesture.reset();
+    this.served = false;
     // Kamerayı varsayılana döndür
     this.camTargetPos.copy(this.DEFAULT_CAM_POS);
     this.camLookTarget.copy(this.DEFAULT_LOOK);
@@ -536,6 +666,8 @@ export class GameLoop {
       const isRecord = this.d.scoreStore.trySetBest(state.score);
       hud.showEndScreen(state, this.d.scoreStore.getBest(), isRecord);
       this.d.onGameOver?.();
+    } else if (state.currentShotType === 'header') {
+      hud.setStatus('Hazırlan — korner geliyor!');
     } else {
       hud.setStatus('Köşeyi seç, bacağını savur!');
     }

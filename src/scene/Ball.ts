@@ -103,6 +103,25 @@ export class Ball {
     this.rb.setAngvel({ x: spin.x, y: spin.y, z: spin.z }, true);
   }
 
+  /** Doğrusal sönümlemeyi ayarla (servis için balistik, şut için sürtünmeli). */
+  setLinearDamping(v: number) {
+    this.rb.setLinearDamping(v);
+  }
+
+  /** Kafa vuruşu için: topu bir noktadan kavisli bir hızla havalandır. */
+  serve(from: THREE.Vector3, velocity: THREE.Vector3, spin: THREE.Vector3) {
+    this.rb.setTranslation({ x: from.x, y: from.y, z: from.z }, true);
+    this.rb.setLinvel({ x: velocity.x, y: velocity.y, z: velocity.z }, true);
+    this.rb.setAngvel({ x: spin.x, y: spin.y, z: spin.z }, true);
+    this.sync();
+  }
+
+  /** O anki doğrusal hız. */
+  velocity(): THREE.Vector3 {
+    const v = this.rb.linvel();
+    return new THREE.Vector3(v.x, v.y, v.z);
+  }
+
   /** Kurtarış: topa sapma uygula. */
   deflect(velocity: THREE.Vector3) {
     this.rb.setLinvel({ x: velocity.x, y: velocity.y, z: velocity.z }, true);

@@ -1,8 +1,13 @@
 import { GAME_CONFIG } from '../config';
 import type { DiveZone } from '../scene/Keeper';
 
-export type Phase = 'idle' | 'ready' | 'shooting' | 'result' | 'over';
+export type Phase = 'idle' | 'ready' | 'serving' | 'shooting' | 'result' | 'over';
 export type ShotResult = 'goal' | 'save' | 'miss';
+
+/** Oyun modu: sadece penaltı, sadece kafa vuruşu ya da ikisi karışık. */
+export type GameMode = 'penalty' | 'header' | 'mixed';
+/** Tek bir atışın tipi (karışık modda atış başına değişir). */
+export type ShotType = 'penalty' | 'header';
 
 export const TOTAL_SHOTS = GAME_CONFIG.totalShots;
 
@@ -18,6 +23,7 @@ export interface GoalScore {
  */
 export class GameState {
   phase: Phase = 'idle';
+  mode: GameMode = 'penalty';
   shots = 0;
   goals = 0;
   saves = 0;
@@ -30,8 +36,9 @@ export class GameState {
   /** Son golün puan dökümü (sonuç ekranı/flash için). */
   lastGoalScore: GoalScore | null = null;
 
-  start() {
+  start(mode: GameMode = 'penalty') {
     this.phase = 'ready';
+    this.mode = mode;
     this.shots = 0;
     this.goals = 0;
     this.saves = 0;
@@ -41,6 +48,18 @@ export class GameState {
     this.bestStreak = 0;
     this.lastResult = null;
     this.lastGoalScore = null;
+  }
+
+  /** Verilen atış indeksinin tipi. Karışık modda sırayla değişir. */
+  shotTypeFor(index: number): ShotType {
+    if (this.mode === 'penalty') return 'penalty';
+    if (this.mode === 'header') return 'header';
+    return index % 2 === 0 ? 'penalty' : 'header';
+  }
+
+  /** Sıradaki (henüz atılmamış) atışın tipi. */
+  get currentShotType(): ShotType {
+    return this.shotTypeFor(this.shots);
   }
 
   recordResult(result: ShotResult, zone: DiveZone = 'center') {

@@ -4,6 +4,7 @@ import { GAME_CONFIG } from '../config';
 import { OneEuroFilter } from './OneEuroFilter';
 
 // MediaPipe Pose landmark indeksleri
+const NOSE = 0;
 const L_SHOULDER = 11;
 const R_SHOULDER = 12;
 const L_HIP = 23;
@@ -55,6 +56,10 @@ export interface GestureState {
   tracked: boolean;
   /** Kadraj dışı/görünmeyen uzuvlar (uyarı için). */
   missing: string[];
+  /** Bu karede kafa vuruşu (zıplama/kafa atma) tetiklendi mi? */
+  header: boolean;
+  /** Kafa vuruşu gücü 0..1 (tetiklendiğinde anlamlı). */
+  headerPower: number;
 }
 
 /**
@@ -93,6 +98,10 @@ export class GestureDetector {
   private frame = 0;
   // Gözlenen tepe ayak hızı — güç haritalaması kişiye uyarlanır (0 = öğrenilmedi)
   private kickPeakVel = 0;
+  // Kafa vuruşu: burun yukarı hızı eşiği + durum
+  private headerVelThreshold = 0.03;
+  private prevNoseY: number | null = null;
+  private headerCooldown = 0;
 
   /** Eşikleri dışarıdan ayarla (örn. "şut çok hassas"). */
   setKickThreshold(v: number) {
@@ -114,6 +123,7 @@ export class GestureDetector {
 
   update(landmarks: PoseLandmarks | null, timestampMs?: number): GestureState {
     if (this.cooldown > 0) this.cooldown--;
+    if (this.headerCooldown > 0) this.headerCooldown--;
     // Zaman: verilmezse 60fps varsay
     const tSec = timestampMs !== undefined ? timestampMs / 1000 : (this.frame += 1) / 60;
 
@@ -132,6 +142,8 @@ export class GestureDetector {
         kickCharge: 0,
         tracked: false,
         missing,
+        header: false,
+        headerPower: 0,
       };
     }
 
@@ -228,6 +240,21 @@ export class GestureDetector {
       }
     }
 
+    // --- Kafa vuruşu: burun yukarı hızı (zıplama/kafa atma) ---
+    const noseY = landmarks[NOSE].y;
+    let header = false;
+    let headerPower = 0;
+    if (this.prevNoseY !== null) {
+      const upVel = this.prevNoseY - noseY;
+      if (this.headerCooldown === 0 && upVel > this.headerVelThreshold) {
+        header = true;
+        const t = (upVel - this.headerVelThreshold) / (this.headerVelThreshold * 2.5);
+        headerPower = Math.max(0.3, Math.min(1, t));
+        this.headerCooldown = this.cooldownFrames;
+      }
+    }
+    this.prevNoseY = noseY;
+
     return {
       zone,
       aim,
@@ -238,6 +265,8 @@ export class GestureDetector {
       kickCharge,
       tracked: true,
       missing,
+      header,
+      headerPower,
     };
   }
 
@@ -300,7 +329,9 @@ export class GestureDetector {
   reset() {
     this.prevLAnkle = null;
     this.prevRAnkle = null;
+    this.prevNoseY = null;
     this.cooldown = this.cooldownFrames; // şut sonrası kısa bekleme
+    this.headerCooldown = this.cooldownFrames;
   }
 
   /** Kalibrasyon ekranı için uzuv görünürlük kontrol listesi. */

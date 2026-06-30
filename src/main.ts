@@ -67,7 +67,7 @@ async function main() {
 
   bindWakeLockRefresh();
 
-  hud.onStart = async () => {
+  hud.onStart = async (mode) => {
     hud.hideOverlay();
     // Seçilen zorluğu uygula
     game.setDifficulty(hud.getDifficulty());
@@ -100,11 +100,15 @@ async function main() {
     }
 
     sound.playWhistle();
-    state.start();
+    state.start(mode);
     game.newGame();
     hud.updateStats(state);
     hud.setStatus(
-      trackingError ? 'Klavye: ← → yön, BOŞLUK şut' : 'Köşeyi seç, bacağını savur!'
+      state.currentShotType === 'header'
+        ? 'Hazırlan — korner geliyor!'
+        : trackingError
+          ? 'Klavye: ← → yön, BOŞLUK şut'
+          : 'Köşeyi seç, bacağını savur!'
     );
   };
 

@@ -106,6 +106,20 @@ export class SoundManager {
     this.noiseHit(0.06, g * 0.7, { type: 'bandpass', freq: 1800, q: 0.8 });
   }
 
+  /** Kafa vuruşu — topa tok, kuru bir "tok" + hafif gıcırtı. */
+  playHeader(power = 0.7) {
+    if (!this.ctx || this.muted) return;
+    const g = 0.35 + power * 0.45;
+    this.osc('sine', 150, 0.12, g, { f1: 70 });
+    this.noiseHit(0.05, g * 0.6, { type: 'lowpass', freq: 900, q: 0.7 });
+  }
+
+  /** Topun havada gelişi — kısa "vuuş" süzülme. */
+  playServe() {
+    if (!this.ctx || this.muted) return;
+    this.noiseHit(0.45, 0.16, { type: 'bandpass', freq: 900, q: 0.8, sweepTo: 1700 });
+  }
+
   /** Hakem düdüğü — kısa, tiz, hafif trilli. */
   playWhistle() {
     if (!this.ctx || this.muted) return;

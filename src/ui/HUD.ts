@@ -1,5 +1,6 @@
 import {
   TOTAL_SHOTS,
+  type GameMode,
   type GameState,
   type ShotResult,
   type GoalScore,
@@ -27,7 +28,7 @@ export class HUD {
   private muted = false;
   private difficulty: DifficultyName = GAME_CONFIG.difficulty.default;
 
-  onStart: () => void = () => {};
+  onStart: (mode: GameMode) => void = () => {};
   onToggleMute: (muted: boolean) => void = () => {};
 
   getDifficulty(): DifficultyName {
@@ -95,6 +96,14 @@ export class HUD {
       font-size:15px;font-weight:700;transition:all .12s}
     .diff.active{background:#2bd66a;border-color:#2bd66a;color:#053}
     .diff:active{transform:scale(.96)}
+    .mode-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+    .mode-btn{pointer-events:auto;cursor:pointer;border:2px solid rgba(255,255,255,.18);
+      border-radius:16px;padding:14px 20px;min-width:120px;color:#eafff0;
+      background:rgba(6,26,14,.55);text-align:center;transition:all .12s}
+    .mode-btn:hover{border-color:#2bd66a;transform:translateY(-2px)}
+    .mode-btn .ico{font-size:30px;line-height:1.1}
+    .mode-btn .name{font-size:16px;font-weight:800;margin-top:2px}
+    .mode-btn .desc{font-size:11px;color:#9fc;margin-top:2px}
     .mute-btn{position:absolute;top:14px;right:14px;pointer-events:auto;cursor:pointer;
       width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.18);
       background:rgba(6,26,14,.62);backdrop-filter:blur(6px);color:#fff;font-size:20px;
@@ -175,9 +184,9 @@ export class HUD {
   showStartScreen(trackingError?: string, best = 0) {
     this.overlay.className = 'overlay';
     this.overlay.innerHTML = `
-      <h1>⚽ Hareketle Penaltı</h1>
-      <p>Kameranın karşısına geç. <b>Vücudunu sağa/sola eğerek</b> köşe seç,
-      <b>bacağını hızla savurarak</b> şut çek. 5 atışta kaç gol?</p>
+      <h1>⚽ Hareketle Futbol</h1>
+      <p>Kameranın karşısına geç. <b>Vücudunu sağa/sola eğerek</b> köşe seç.
+      Penaltıda <b>bacağını savur</b>, kafa vuruşunda <b>tam zamanında zıpla</b>.</p>
       ${best > 0 ? `<p class="big" style="font-size:22px">🏆 En iyi: ${best}</p>` : ''}
       <div class="diff-label">ZORLUK</div>
       <div class="diff-row">
@@ -185,10 +194,25 @@ export class HUD {
         <button class="diff" data-d="orta">Orta</button>
         <button class="diff" data-d="zor">Zor</button>
       </div>
-      ${trackingError ? `<p class="hint">⚠️ ${trackingError}<br/>Klavye ile oyna: ← → yön, BOŞLUK şut.</p>` : ''}
-      <button class="btn" id="start-btn">BAŞLA</button>
-      <p class="hint">Kamera izni gerekir. Test: ← → yön, BOŞLUK şut.</p>
+      <div class="diff-label">MOD SEÇ — başlamak için dokun</div>
+      <div class="mode-row">
+        <div class="mode-btn" data-mode="penalty">
+          <div class="ico">🥅</div><div class="name">Penaltı</div>
+          <div class="desc">Bacakla şut</div>
+        </div>
+        <div class="mode-btn" data-mode="header">
+          <div class="ico">🧑‍🦱</div><div class="name">Kafa Vuruşu</div>
+          <div class="desc">Korner + zamanlama</div>
+        </div>
+        <div class="mode-btn" data-mode="mixed">
+          <div class="ico">🔀</div><div class="name">Karışık</div>
+          <div class="desc">İkisi dönüşümlü</div>
+        </div>
+      </div>
+      ${trackingError ? `<p class="hint">⚠️ ${trackingError}<br/>Klavye ile oyna: ← → yön, BOŞLUK aksiyon.</p>` : ''}
+      <p class="hint">Kamera izni gerekir. Test klavyesi: ← → yön, BOŞLUK şut/kafa.</p>
     `;
+    // Zorluk seçimi (geçiş): tıkla, aktif olanı boya
     const diffBtns = Array.from(
       this.overlay.querySelectorAll<HTMLButtonElement>('.diff')
     );
@@ -203,7 +227,12 @@ export class HUD {
       })
     );
     paint();
-    q('#start-btn').addEventListener('click', () => this.onStart());
+    // Mod butonu seçilen zorlukla oyunu başlatır
+    this.overlay.querySelectorAll<HTMLElement>('.mode-btn').forEach((btn) => {
+      btn.addEventListener('click', () =>
+        this.onStart((btn.dataset.mode as GameMode) ?? 'penalty')
+      );
+    });
   }
 
   hideOverlay() {
@@ -289,8 +318,9 @@ export class HUD {
       En uzun seri <b>${state.bestStreak}</b></p>
       <p>${msg}</p>
       <button class="btn" id="restart-btn">TEKRAR OYNA</button>
+      <p class="hint">Menüye dön: sayfayı yenile · Mod: ${modeLabel(state.mode)}</p>
     `;
-    q('#restart-btn').addEventListener('click', () => this.onStart());
+    q('#restart-btn').addEventListener('click', () => this.onStart(state.mode));
   }
 
   /** Sonuç yazısını ekrana parlat. */
@@ -344,4 +374,8 @@ function q(sel: string): HTMLElement {
   const el = document.querySelector(sel);
   if (!el) throw new Error(`HUD elemanı yok: ${sel}`);
   return el as HTMLElement;
+}
+
+function modeLabel(mode: GameMode): string {
+  return mode === 'penalty' ? 'Penaltı' : mode === 'header' ? 'Kafa Vuruşu' : 'Karışık';
 }

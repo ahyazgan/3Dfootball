@@ -70,3 +70,46 @@ describe('GameState — puanlama', () => {
     expect(g.goals).toBe(0);
   });
 });
+
+describe('GameState — atış modu', () => {
+  it('penalty modu her atışta penaltıdır', () => {
+    const g = new GameState();
+    g.start('penalty');
+    expect(g.shotTypeFor(0)).toBe('penalty');
+    expect(g.shotTypeFor(3)).toBe('penalty');
+    expect(g.currentShotType).toBe('penalty');
+  });
+
+  it('header modu her atışta kafa vuruşudur', () => {
+    const g = new GameState();
+    g.start('header');
+    expect(g.shotTypeFor(0)).toBe('header');
+    expect(g.shotTypeFor(4)).toBe('header');
+    expect(g.currentShotType).toBe('header');
+  });
+
+  it('mixed modu penaltı/kafa diye dönüşümlüdür', () => {
+    const g = new GameState();
+    g.start('mixed');
+    expect(g.shotTypeFor(0)).toBe('penalty');
+    expect(g.shotTypeFor(1)).toBe('header');
+    expect(g.shotTypeFor(2)).toBe('penalty');
+    expect(g.shotTypeFor(3)).toBe('header');
+  });
+
+  it('currentShotType atış sayısını takip eder', () => {
+    const g = new GameState();
+    g.start('mixed');
+    expect(g.currentShotType).toBe('penalty'); // shots=0
+    g.recordResult('goal', 'center'); // shots=1
+    g.next();
+    expect(g.currentShotType).toBe('header'); // shots=1
+  });
+
+  it('varsayılan mod penaltıdır', () => {
+    const g = new GameState();
+    g.start();
+    expect(g.mode).toBe('penalty');
+    expect(g.currentShotType).toBe('penalty');
+  });
+});
