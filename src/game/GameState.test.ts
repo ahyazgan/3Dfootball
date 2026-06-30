@@ -112,4 +112,12 @@ describe('GameState — atış modu', () => {
     expect(g.mode).toBe('penalty');
     expect(g.currentShotType).toBe('penalty');
   });
+
+  it('volley modu her atışta volédir', () => {
+    const g = new GameState();
+    g.start('volley');
+    expect(g.shotTypeFor(0)).toBe('volley');
+    expect(g.shotTypeFor(4)).toBe('volley');
+    expect(g.currentShotType).toBe('volley');
+  });
 });

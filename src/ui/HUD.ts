@@ -204,9 +204,13 @@ export class HUD {
           <div class="ico">🧑‍🦱</div><div class="name">Kafa Vuruşu</div>
           <div class="desc">Korner + zamanlama</div>
         </div>
+        <div class="mode-btn" data-mode="volley">
+          <div class="ico">⚡</div><div class="name">Volé</div>
+          <div class="desc">Gelen topu falsoyla gole çevir</div>
+        </div>
         <div class="mode-btn" data-mode="mixed">
           <div class="ico">🔀</div><div class="name">Karışık</div>
-          <div class="desc">İkisi dönüşümlü</div>
+          <div class="desc">Penaltı + kafa dönüşümlü</div>
         </div>
       </div>
       ${trackingError ? `<p class="hint">⚠️ ${trackingError}<br/>Klavye ile oyna: ← → yön, BOŞLUK aksiyon.</p>` : ''}
@@ -377,5 +381,11 @@ function q(sel: string): HTMLElement {
 }
 
 function modeLabel(mode: GameMode): string {
-  return mode === 'penalty' ? 'Penaltı' : mode === 'header' ? 'Kafa Vuruşu' : 'Karışık';
+  return mode === 'penalty'
+    ? 'Penaltı'
+    : mode === 'header'
+      ? 'Kafa Vuruşu'
+      : mode === 'volley'
+        ? 'Volé'
+        : 'Karışık';
 }

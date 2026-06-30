@@ -28,8 +28,56 @@ import { GAME_CONFIG, type DifficultyName } from '../config';
 
 /** Kafa vuruşu için ideal temas noktası (oyuncunun biraz önünde, kafa hizasında). */
 const HEADER_STRIKE = new THREE.Vector3(0, 1.55, 2.0);
-/** Servis topunun havada kalma süresi (saniye). */
-const SERVE_TRAVEL = 1.5;
+
+/** Açık oyundan gelen top deseni (New Star Soccer tarzı bitiriş). */
+interface ServePattern {
+  /** Tanıtım metni. */
+  status: string;
+  /** İdeal temas noktası (topun buraya geldiği an en iyi vuruş). */
+  strike: THREE.Vector3;
+  /** Topun geldiği köşe yarıçapı (x işareti her serviste değişir). */
+  fromX: number;
+  fromY: number;
+  /** Servis kaynağının kale çizgisine göre z ötelemesi. */
+  fromZOffset: number;
+  /** Havada kalma süresi. */
+  travel: number;
+  /** Kafa hizası mı? (ses ve metin için) */
+  head: boolean;
+}
+
+const SERVE_PATTERNS: Record<'cross' | 'drive' | 'lob', ServePattern> = {
+  // Yüksek orta — kafayla bitir
+  cross: {
+    status: 'Orta geliyor — tam zamanında kafa vur!',
+    strike: new THREE.Vector3(0, 1.55, 2.0),
+    fromX: 5.5,
+    fromY: 0.3,
+    fromZOffset: 1,
+    travel: 1.5,
+    head: true,
+  },
+  // Yerden sert pas — voleyi patlat
+  drive: {
+    status: 'Yerden geliyor — voleyi patlat!',
+    strike: new THREE.Vector3(0, 0.7, 2.3),
+    fromX: 6,
+    fromY: 0.4,
+    fromZOffset: 2,
+    travel: 1.15,
+    head: false,
+  },
+  // Yumuşak lob — beklemeli vuruş
+  lob: {
+    status: 'Lob geliyor — bekle, sonra vur!',
+    strike: new THREE.Vector3(0, 1.05, 1.8),
+    fromX: 4.5,
+    fromY: 0.3,
+    fromZOffset: 1.5,
+    travel: 1.8,
+    head: false,
+  },
+};
 
 export interface GameDeps {
   canvas: HTMLCanvasElement;
@@ -87,10 +135,13 @@ export class GameLoop {
   private camLookAt = new THREE.Vector3(0, 1.1, -6);
   private camLookTarget = new THREE.Vector3(0, 1.1, -6);
 
-  // Kafa vuruşu durumu
+  // Servis (kafa/volé) durumu
   private served = false;
   private serveElapsed = 0;
   private serveCornerSign = 1;
+  private curStrike = HEADER_STRIKE.clone();
+  private curHead = true;
+  private volleyPick = 0;
 
   // Klavye yedeği (kamerasız test)
   private keyZone: DiveZone = 'center';
@@ -356,8 +407,10 @@ export class GameLoop {
     // Klavye BOŞLUK: moda göre şut ya da kafa vuruşu olarak yorumlanır
     const keyAct = this.keyKick;
     this.keyKick = false;
-    const headerShot = state.currentShotType === 'header';
-    if (keyAct && !headerShot) {
+    // Servisli atışlar (kafa/volé): gelen topu zamanlayıp vurursun
+    const servedShot =
+      state.currentShotType === 'header' || state.currentShotType === 'volley';
+    if (keyAct && !servedShot) {
       kick = true;
       power = 0.8;
     }
@@ -385,9 +438,12 @@ export class GameLoop {
 
     // --- Faz makinesi ---
     if (state.phase === 'ready') {
-      if (headerShot) {
-        // Kafa vuruşu atışı: topu kornerden servis et
-        if (!this.served) this.serveHeader();
+      if (servedShot) {
+        // Gelen topu servis et: kafa = yüksek orta, volé = rastgele desen
+        if (!this.served) {
+          if (state.currentShotType === 'header') this.serveHeader();
+          else this.serveVolley();
+        }
       } else {
         hud.setActiveZone(zone);
         hud.setPower(charge);
@@ -395,8 +451,10 @@ export class GameLoop {
         if (kick) this.shoot(zone, aim, power, kickFoot);
       }
     } else if (state.phase === 'serving') {
-      const hit = gHeader || keyAct;
-      this.stepServe(dt, zone, aim, hit, gHeader ? gHeaderPower : 0.8);
+      // Tetik: kafa hareketi, ayak voleyi ya da klavye
+      const hit = gHeader || kick || keyAct;
+      const strikePower = gHeader ? gHeaderPower : kick ? power : 0.8;
+      this.stepServe(dt, zone, aim, hit, strikePower);
     } else if (state.phase === 'shooting') {
       this.shotElapsed += dt;
       this.stepShot();
@@ -484,19 +542,40 @@ export class GameLoop {
     hud.setPower(0);
   }
 
-  /** Kafa vuruşu için topu kornerden kavisle havalandır. */
+  /** Kafa vuruşu (yüksek orta) servisi. */
   private serveHeader() {
+    this.serveBall(SERVE_PATTERNS.cross);
+  }
+
+  /** Açık-oyun voleyi: gelen top desenini rastgele seç (New Star Soccer tarzı). */
+  private serveVolley() {
+    const keys = ['drive', 'cross', 'lob'] as const;
+    const p = keys[this.volleyPick % keys.length];
+    this.volleyPick++;
+    this.serveBall(SERVE_PATTERNS[p]);
+  }
+
+  /** Topu seçilen desene göre kornerden kavisle havalandır (balistik). */
+  private serveBall(pattern: ServePattern) {
     this.served = true;
     this.serveElapsed = 0;
     this.serveCornerSign *= -1; // her servisi diğer köşeden at
-    const from = new THREE.Vector3(this.serveCornerSign * 5.5, 0.3, GOAL_LINE_Z + 1);
+    this.curStrike.copy(pattern.strike);
+    this.curHead = pattern.head;
 
-    // Yerçekimi altında SERVE_TRAVEL saniyede HEADER_STRIKE'a varacak balistik hız
+    const from = new THREE.Vector3(
+      this.serveCornerSign * pattern.fromX,
+      pattern.fromY,
+      GOAL_LINE_Z + pattern.fromZOffset
+    );
+
+    // Yerçekimi altında pattern.travel saniyede temas noktasına varacak balistik hız
     const g = 9.81;
+    const T = pattern.travel;
     const vel = new THREE.Vector3(
-      (HEADER_STRIKE.x - from.x) / SERVE_TRAVEL,
-      (HEADER_STRIKE.y - from.y) / SERVE_TRAVEL + 0.5 * g * SERVE_TRAVEL,
-      (HEADER_STRIKE.z - from.z) / SERVE_TRAVEL
+      (pattern.strike.x - from.x) / T,
+      (pattern.strike.y - from.y) / T + 0.5 * g * T,
+      (pattern.strike.z - from.z) / T
     );
     this.ball.setLinearDamping(0.02); // servis sırasında neredeyse balistik
     this.ball.serve(from, vel, new THREE.Vector3(3, 5, 0));
@@ -504,7 +583,7 @@ export class GameLoop {
 
     this.d.state.phase = 'serving';
     this.d.hud.setPower(0);
-    this.d.hud.setStatus('Topu izle — tam zamanında kafa vur!');
+    this.d.hud.setStatus(pattern.status);
   }
 
   /** Servis fazı: temas penceresini ve zamanlamayı kontrol et. */
@@ -517,23 +596,28 @@ export class GameLoop {
   ) {
     this.serveElapsed += dt;
     const pos = this.ball.position();
-    const dist = pos.distanceTo(HEADER_STRIKE);
-    // Temas penceresi: top oyuncunun kafa bölgesinden geçerken
-    const inWindow = pos.z > 0.0 && pos.y > 0.7 && pos.y < 2.7;
+    const dist = pos.distanceTo(this.curStrike);
+    // Temas penceresi: top ideal temas noktasının yakınından geçerken
+    // (3B mesafe — desen yüksekliğinden bağımsız çalışır)
+    const inWindow = dist < 1.5;
 
     this.d.hud.setActiveZone(zone);
     // Zamanlama göstergesi: ideale yakınlık
-    this.d.hud.setPower(inWindow ? Math.max(0, 1 - dist / 1.4) : 0);
+    this.d.hud.setPower(inWindow ? Math.max(0, 1 - dist / 1.5) : 0);
 
     if (hit && inWindow) {
-      const closeness = Math.max(0.25, Math.min(1, 1 - dist / 1.4));
+      const closeness = Math.max(0.25, Math.min(1, 1 - dist / 1.5));
       const power = Math.min(1, closeness * 0.7 + inputPower * 0.3);
       this.headerStrike(zone, aim, power);
       return;
     }
 
     // Pencere kaçtı: top oyuncuyu geçti, yere düştü ya da zaman aşımı
-    if (this.serveElapsed > 4 || pos.z > 4.5 || (pos.y < 0.18 && pos.z > 0.5)) {
+    if (
+      this.serveElapsed > 4 ||
+      pos.z > this.curStrike.z + 2.5 ||
+      (pos.y < 0.18 && pos.z > 0.5)
+    ) {
       this.resolveMissedHeader();
     }
   }
@@ -557,7 +641,9 @@ export class GameLoop {
     const spin = new THREE.Vector3(-speed, dir.x * 5, 0);
     this.ball.setLinearDamping(0.25); // normal sürtünmeye dön
     this.ball.shoot(vel, spin);
-    this.d.sound.playHeader(power);
+    // Kafa hizasıysa kafa sesi, yerden geliyorsa volé (şut) sesi
+    if (this.curHead) this.d.sound.playHeader(power);
+    else this.d.sound.playKick(power);
 
     const dive = this.keeperAI.decide(zone, state.shots, TOTAL_SHOTS);
     this.keeperAI.record(zone);
@@ -580,7 +666,7 @@ export class GameLoop {
     this.d.sound.playMiss();
     hud.flashResult('miss');
     hud.updateStats(state);
-    hud.setStatus('Kafayı kaçırdın!');
+    hud.setStatus(this.curHead ? 'Kafayı kaçırdın!' : 'Topu kaçırdın!');
     hud.setPower(0);
     this.resultTimer = 1.4;
   }
@@ -668,6 +754,8 @@ export class GameLoop {
       this.d.onGameOver?.();
     } else if (state.currentShotType === 'header') {
       hud.setStatus('Hazırlan — korner geliyor!');
+    } else if (state.currentShotType === 'volley') {
+      hud.setStatus('Hazırlan — top geliyor!');
     } else {
       hud.setStatus('Köşeyi seç, bacağını savur!');
     }

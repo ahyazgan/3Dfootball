@@ -4,10 +4,10 @@ import type { DiveZone } from '../scene/Keeper';
 export type Phase = 'idle' | 'ready' | 'serving' | 'shooting' | 'result' | 'over';
 export type ShotResult = 'goal' | 'save' | 'miss';
 
-/** Oyun modu: sadece penaltı, sadece kafa vuruşu ya da ikisi karışık. */
-export type GameMode = 'penalty' | 'header' | 'mixed';
+/** Oyun modu: penaltı, kafa vuruşu, açık-oyun voleyi ya da karışık. */
+export type GameMode = 'penalty' | 'header' | 'volley' | 'mixed';
 /** Tek bir atışın tipi (karışık modda atış başına değişir). */
-export type ShotType = 'penalty' | 'header';
+export type ShotType = 'penalty' | 'header' | 'volley';
 
 export const TOTAL_SHOTS = GAME_CONFIG.totalShots;
 
@@ -54,6 +54,7 @@ export class GameState {
   shotTypeFor(index: number): ShotType {
     if (this.mode === 'penalty') return 'penalty';
     if (this.mode === 'header') return 'header';
+    if (this.mode === 'volley') return 'volley';
     return index % 2 === 0 ? 'penalty' : 'header';
   }
 

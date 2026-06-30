@@ -106,9 +106,11 @@ async function main() {
     hud.setStatus(
       state.currentShotType === 'header'
         ? 'Hazırlan — korner geliyor!'
-        : trackingError
-          ? 'Klavye: ← → yön, BOŞLUK şut'
-          : 'Köşeyi seç, bacağını savur!'
+        : state.currentShotType === 'volley'
+          ? 'Hazırlan — top geliyor!'
+          : trackingError
+            ? 'Klavye: ← → yön, BOŞLUK şut'
+            : 'Köşeyi seç, bacağını savur!'
     );
   };
 
