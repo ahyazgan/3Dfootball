@@ -25,6 +25,9 @@ export class PlayerStore {
     }
     if (typeof this.data.seasonMatch !== 'number') this.data.seasonMatch = 0;
     if (typeof this.data.clubPoints !== 'number') this.data.clubPoints = 0;
+    if (typeof this.data.rival !== 'string' || this.data.rival.length === 0) {
+      this.data.rival = GAME_CONFIG.career.rivalry.defaultRival;
+    }
     if (!Array.isArray(this.data.achievements)) this.data.achievements = [];
     if (typeof this.data.nationalCaps !== 'number') this.data.nationalCaps = 0;
     if (typeof this.data.goldenBalls !== 'number') this.data.goldenBalls = 0;
@@ -56,6 +59,7 @@ export class PlayerStore {
       currentClub: s.club,
       seasonMatch: 0,
       clubPoints: 0,
+      rival: GAME_CONFIG.career.rivalry.defaultRival,
       achievements: [],
       nationalCaps: 0,
       goldenBalls: 0,

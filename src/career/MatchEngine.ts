@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from '../config';
 import type { PlayerData, CareerTier } from './types';
+import { rollEvents, sumEventEffects, type MatchEvent } from './MatchEvents';
 
 const TIER_ORDER: CareerTier[] = ['amateur', 'semipro', 'pro', 'star', 'legend'];
 
@@ -15,6 +16,13 @@ export interface MatchPlan {
   skillBase: number;
   skillRamp: number;
   saveReach: number;
+  // --- Aşama 6: rakip/kaleci/derbi/olay derinliği (opsiyonel — eski testler korunur) ---
+  /** Rakip kalecinin adı. */
+  keeperName?: string;
+  /** Bu maç ezeli rakibe karşı mı (derbi)? */
+  isDerby?: boolean;
+  /** Bu maç için seçilen maç içi olaylar. */
+  events?: MatchEvent[];
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -65,16 +73,35 @@ export function planMatch(
 
   const opponent =
     m.opponents[Math.floor(rng() * m.opponents.length) % m.opponents.length];
+  const keeperName = m.keepers[Math.floor(rng() * m.keepers.length) % m.keepers.length];
   const difficultyLabel =
     opponentStrength <= 2 ? 'Kolay' : opponentStrength === 3 ? 'Orta' : 'Zor';
+
+  // Derbi: rakip, oyuncunun ezeli rakibiyse — daha çetin kaleci.
+  const isDerby = opponent === player.rival;
+
+  // Maç içi olaylar: yalnızca kaleci (skillBase/saveReach) ve sonraki ödülleri etkiler.
+  const events = rollEvents(rng);
+  const eff = sumEventEffects(events);
+  const derbyKeeperBoost = isDerby ? 0.06 : 0;
+
+  const finalSkillBase = clamp(skillBase + eff.skillBaseDelta + derbyKeeperBoost, 0.1, 0.8);
+  const finalSaveReach = clamp(
+    saveReach + eff.saveReachDelta + (isDerby ? 0.08 : 0),
+    1.0,
+    1.95
+  );
 
   return {
     opponent,
     opponentStrength,
     criticalMoments,
     difficultyLabel,
-    skillBase,
+    skillBase: finalSkillBase,
     skillRamp: k.skillRamp,
-    saveReach,
+    saveReach: finalSaveReach,
+    keeperName,
+    isDerby,
+    events,
   };
 }

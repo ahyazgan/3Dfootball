@@ -19,15 +19,27 @@ export class MatchResultScreen {
       `<div class="c-row"><span class="c-label">${label}</span>
         <b style="color:${positive ? '#2bd66a' : '#ff6a4d'}">${value}</b></div>`;
 
+    const derbyNote =
+      o.isDerby && o.rating >= 7
+        ? `<p class="c-hint" style="color:#ff5a3c;font-weight:800">🔥 DERBİ GALİBİYETİ — ezeli rakibi devirdin!</p>`
+        : o.isDerby
+          ? `<p class="c-hint" style="color:#ffb3a3">Derbi maçıydı — bir dahakine!</p>`
+          : '';
+    const eventNote = o.eventLabels.length
+      ? `<p class="c-hint">Koşullar: ${o.eventLabels.join(' · ')}</p>`
+      : '';
+
     this.root.innerHTML = `
       <h2>MAÇ BİTTİ — ${o.opponent}</h2>
       <h1 style="color:${ratingColor};font-size:30px">MAÇ REYTİNGİ</h1>
       <div style="font-size:64px;font-weight:900;color:${ratingColor};text-shadow:0 3px 16px #000">${o.rating.toFixed(1)}</div>
       <div class="c-card">
+        ${derbyNote}
         <div class="c-row"><span class="c-label">GOL</span><b>${o.goals} / ${o.moments} an</b></div>
         ${reward('PARA', `+${o.money.toLocaleString('tr-TR')} €`)}
         ${reward('ŞÖHRET', `${o.reputation >= 0 ? '+' : ''}${o.reputation}`, o.reputation >= 0)}
         ${reward('DEĞER', `+${o.value.toLocaleString('tr-TR')} €`)}
+        ${eventNote}
         ${
           o.transferInterest
             ? `<p class="c-hint" style="color:#ffd24d">📞 Performansın dikkat çekti — transfer ilgisi var! (Aşama 4)</p>`

@@ -183,6 +183,17 @@ export const GAME_CONFIG = {
         'Ege Spor',
         'Anadolu United',
       ],
+      /** Rakip kalecilerin isimleri (maç başına rastgele seçilir). */
+      keepers: [
+        'Eldiven Kadir',
+        'Duvar Mert',
+        'Kedi Refleksli Onur',
+        'Panter Bora',
+        'Ahtapot Selim',
+        'Kale Bekçisi Tuna',
+        'Çelik Eller Volkan',
+        'Şahin Göz Emre',
+      ],
       /** Kaleci zorluğu: rakip gücü 1..5 -> skillBase/saveReach aralığı. */
       keeper: {
         skillBaseMin: 0.18,
@@ -244,6 +255,27 @@ export const GAME_CONFIG = {
         star: ['Anadolu Devleri', 'Marmara United'],
         legend: ['Galaktik SK', 'Kıta Avrupası FK'],
       },
+    },
+
+    /** Rekabet / derbi (Aşama 6): belirli bir ezeli rakibe karşı maçlar. */
+    rivalry: {
+      /** Yeni oyuncunun ezeli rakibi (opponents havuzundan biri olmalı). */
+      defaultRival: 'Demirkent SK',
+      label: 'DERBİ',
+      /** Derbi kazanınca (reyting >= winRating) ek şöhret. */
+      winRepBonus: 40,
+      /** Derbi kazanınca ek moral. */
+      winMoraleBonus: 12,
+      /** Derbi kaybedince (reyting < drawRating) moral cezası. */
+      lossMoralePenalty: 10,
+    },
+
+    /** Maç içi olaylar (Aşama 6): kaleciyi/ödülleri etkileyen rastgele anlar. */
+    events: {
+      /** Bir maçta olay çıkma olasılığı. */
+      chance: 0.55,
+      /** Bir maçta en çok kaç olay. */
+      maxPerMatch: 2,
     },
 
     /** Üst seviye: milli takım, sezon ödülleri, başarımlar (Aşama 5). */

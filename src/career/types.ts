@@ -42,6 +42,9 @@ export interface PlayerData {
   /** Bu sezon lig puanı. */
   clubPoints: number;
 
+  /** Ezeli rakip kulüp (derbi maçları için). */
+  rival: string;
+
   /** Açılan başarım id'leri. */
   achievements: string[];
   /** Milli takım maçı sayısı. */
