@@ -53,6 +53,29 @@ export interface PlayerData {
   goldenBalls: number;
   /** Kazanılan gol kralı sayısı. */
   topScorerTitles: number;
+
+  /** Kazanılan uluslararası kupa (Dünya Kupası/Avrupa Şampiyonası) sayısı. */
+  internationalTitles: number;
+  /** Aktif turnuva durumu (yoksa null). */
+  tournament: TournamentState | null;
+}
+
+/** Eleme usulü milli takım turnuvasının serileştirilebilir durumu. */
+export interface TournamentState {
+  /** Görünen ad, örn. "Dünya Kupası — 3. sezon". */
+  name: string;
+  /** Oyuncunun milli takımı. */
+  team: string;
+  /** Tur etiketleri (Son 16 ... Final). */
+  rounds: string[];
+  /** Her tura denk gelen rakip ülke. */
+  opponents: string[];
+  /** Şu anki tur indeksi (0 tabanlı). */
+  roundIndex: number;
+  /** Elendi mi? */
+  eliminated: boolean;
+  /** Şampiyon mu? */
+  champion: boolean;
 }
 
 /** Tier sırası (yükselişten düşüşe ölçek). */

@@ -1,6 +1,7 @@
 import { injectCareerStyles } from './careerStyles';
 import { GAME_CONFIG } from '../config';
 import { type PlayerData, TIER_LABEL, POSITION_LABEL, KIT_PALETTE } from './types';
+import { isCalledUp } from './Tournament';
 
 export interface HubCallbacks {
   onMatch: () => void;
@@ -8,6 +9,8 @@ export interface HubCallbacks {
   onRest: () => void;
   onStats: () => void;
   onMenu: () => void;
+  /** Milli takım turnuvası (yalnızca çağrıldıysa). */
+  onNational: () => void;
 }
 
 /** Ana kariyer ekranı: durum + aksiyonlar. */
@@ -60,6 +63,12 @@ export class CareerHub {
       </div>
       <div class="c-card">
         <button class="cbtn wide" id="h-match">SONRAKİ MAÇ ▶</button>
+        ${
+          isCalledUp(d)
+            ? `<button class="cbtn wide" id="h-national" style="background:linear-gradient(180deg,#ff6a4d,#e0341f)">
+                🌍 MİLLİ TAKIM${d.tournament && !d.tournament.eliminated && !d.tournament.champion ? ' (devam)' : ''}</button>`
+            : ''
+        }
         <button class="cbtn wide secondary" id="h-train">ANTRENMAN</button>
         <button class="cbtn wide secondary" id="h-rest">DİNLEN</button>
         <button class="cbtn wide secondary" id="h-stats">KARİYERİM 📖</button>
@@ -71,11 +80,14 @@ export class CareerHub {
     this.root.querySelector('#h-rest')!.addEventListener('click', () => cb.onRest());
     this.root.querySelector('#h-stats')!.addEventListener('click', () => cb.onStats());
     this.root.querySelector('#h-menu')!.addEventListener('click', () => cb.onMenu());
+    const nat = this.root.querySelector('#h-national');
+    if (nat) nat.addEventListener('click', () => cb.onNational());
   }
 
   /** Kupa varsa hub'da küçük bir satır göster. */
   private trophyRow(d: PlayerData): string {
     const parts: string[] = [];
+    if (d.internationalTitles > 0) parts.push(`🌍 ${d.internationalTitles}`);
     if (d.goldenBalls > 0) parts.push(`🏆 ${d.goldenBalls}`);
     if (d.topScorerTitles > 0) parts.push(`🥇 ${d.topScorerTitles}`);
     if (d.nationalCaps > 0) parts.push(`🇹🇷 ${d.nationalCaps}`);

@@ -47,6 +47,12 @@ export const ACHIEVEMENTS: Achievement[] = [
     done: (d) => d.topScorerTitles > 0,
   },
   { id: 'golden_ball', label: 'Altın Top', icon: '🏆', done: (d) => d.goldenBalls > 0 },
+  {
+    id: 'world_champion',
+    label: 'Dünya Şampiyonu',
+    icon: '🌍',
+    done: (d) => d.internationalTitles > 0,
+  },
 ];
 
 const BY_ID = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));

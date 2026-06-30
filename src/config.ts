@@ -278,6 +278,50 @@ export const GAME_CONFIG = {
       maxPerMatch: 2,
     },
 
+    /** Milli takım turnuvası (Aşama 7): eleme usulü uluslararası kupa. */
+    tournament: {
+      /** Oyuncunun milli takımı. */
+      nationalTeam: 'Türkiye',
+      /** Turnuva adları (sezon paritesine göre değişir). */
+      names: { even: 'Dünya Kupası', odd: 'Avrupa Şampiyonası' },
+      /** Eleme turları (ilkten finale). */
+      rounds: ['Son 16', 'Çeyrek Final', 'Yarı Final', 'Final'],
+      /** Rakip milli takımlar (turlara rastgele dağıtılır). */
+      countries: [
+        'Brezilya',
+        'Almanya',
+        'Fransa',
+        'Arjantin',
+        'İspanya',
+        'İtalya',
+        'Hollanda',
+        'Portekiz',
+        'Belçika',
+        'İngiltere',
+        'Hırvatistan',
+        'Uruguay',
+      ],
+      /** Her turda oynanacak kritik an (şut) sayısı. */
+      matchShots: 5,
+      /** Bir sonraki tura geçmek için gereken maç reytingi (altı eleme). */
+      advanceRating: 6.5,
+      /** Tur ilerledikçe artan kaleci zorluğu. */
+      keeper: {
+        skillBaseStart: 0.4,
+        skillBaseStep: 0.06,
+        saveReachStart: 1.45,
+        saveReachStep: 0.08,
+        skillRamp: 0.42,
+      },
+      /** Ödüller. */
+      rewards: {
+        perRoundRep: 30,
+        perRoundMoney: 6000,
+        championRep: 400,
+        championMoney: 120000,
+      },
+    },
+
     /** Üst seviye: milli takım, sezon ödülleri, başarımlar (Aşama 5). */
     awards: {
       /** Gol kralı için gereken sezon golü. */

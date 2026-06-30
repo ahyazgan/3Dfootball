@@ -32,6 +32,8 @@ export class PlayerStore {
     if (typeof this.data.nationalCaps !== 'number') this.data.nationalCaps = 0;
     if (typeof this.data.goldenBalls !== 'number') this.data.goldenBalls = 0;
     if (typeof this.data.topScorerTitles !== 'number') this.data.topScorerTitles = 0;
+    if (typeof this.data.internationalTitles !== 'number') this.data.internationalTitles = 0;
+    if (this.data.tournament === undefined) this.data.tournament = null;
   }
 
   /** Boş varsayılan oyuncu (config.career.start'tan). */
@@ -64,6 +66,8 @@ export class PlayerStore {
       nationalCaps: 0,
       goldenBalls: 0,
       topScorerTitles: 0,
+      internationalTitles: 0,
+      tournament: null,
     };
   }
 

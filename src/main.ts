@@ -35,6 +35,13 @@ import {
 import { trainStat, STAT_LABEL } from './career/Training';
 import { recordMatchInSeason, isSeasonOver, endSeason } from './career/Season';
 import { generateOffers, acceptOffer } from './career/Transfers';
+import { TournamentScreen } from './career/TournamentScreen';
+import {
+  createTournament,
+  tournamentMatchPlan,
+  recordTournamentMatch,
+  isTournamentOver,
+} from './career/Tournament';
 import { toast } from './career/careerStyles';
 
 async function main() {
@@ -141,6 +148,7 @@ async function main() {
   const seasonSummaryScreen = new SeasonSummaryScreen();
   const transferScreen = new TransferScreen();
   const careerStatsScreen = new CareerStatsScreen();
+  const tournamentScreen = new TournamentScreen();
 
   function showMainMenu() {
     hud.setMatchUIVisible(false);
@@ -198,11 +206,91 @@ async function main() {
           showHub(store);
         });
       },
+      onNational: () => {
+        careerHub.hide();
+        showTournament(store);
+      },
       onMenu: () => {
         careerHub.hide();
         showMainMenu();
       },
     });
+  }
+
+  // --- Milli takım turnuvası (Aşama 7) ---
+  function showTournament(store: PlayerStore) {
+    if (!store.data.tournament) {
+      store.data.tournament = createTournament(store.data);
+      careerSave.set(store.data);
+    }
+    tournamentScreen.show(store.data.tournament, {
+      onPlay: () => playTournamentMatch(store),
+      onBack: () => {
+        tournamentScreen.hide();
+        showHub(store);
+      },
+      onFinish: () => {
+        store.data.tournament = null; // turnuvayı kapat (sonraki çağrıda yenisi)
+        careerSave.set(store.data);
+        tournamentScreen.hide();
+        showHub(store);
+      },
+    });
+  }
+
+  function playTournamentMatch(store: PlayerStore) {
+    const tour = store.data.tournament;
+    if (!tour || isTournamentOver(tour)) {
+      showTournament(store);
+      return;
+    }
+    if (store.data.energy < 10) {
+      toast('Enerjin çok düşük — önce dinlen 😴');
+      return;
+    }
+    const plan = tournamentMatchPlan(tour, store.data);
+    tournamentScreen.hide();
+    matchIntro.show(
+      plan,
+      async () => {
+        matchIntro.hide();
+        hud.setMatchUIVisible(true);
+        await ensureTrackingReady();
+        sound.playWhistle();
+        game.startCareerMatch(
+          {
+            shots: plan.criticalMoments,
+            skillBase: plan.skillBase,
+            skillRamp: plan.skillRamp,
+            saveReach: plan.saveReach,
+          },
+          () => {
+            const outcome = computeMatchResult(plan, game.getMatchStats());
+            applyOutcome(store, outcome);
+            const res = recordTournamentMatch(store, outcome.rating);
+            const fresh = checkNewAchievements(store);
+            careerSave.set(store.data);
+            hud.setMatchUIVisible(false);
+            matchResultScreen.show(outcome, () => {
+              matchResultScreen.hide();
+              if (res.champion) toast('🏆 ŞAMPİYON! Kupayı kaldırdın!');
+              else if (res.advanced) toast(`Tur geçildi: ${res.roundLabel} ✓`);
+              else toast('Elendin — bir dahaki turnuvada!');
+              fresh.forEach((a, i) =>
+                setTimeout(() => toast(`Başarım: ${a.icon} ${a.label}`), (i + 1) * 700)
+              );
+              showTournament(store);
+            });
+          }
+        );
+        hud.updateStats(state);
+        hud.setStatus(matchStatusText());
+      },
+      () => {
+        matchIntro.hide();
+        showTournament(store);
+      }
+    );
   }
 
   function showTraining(store: PlayerStore) {

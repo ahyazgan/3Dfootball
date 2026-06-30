@@ -44,7 +44,8 @@ export class CareerStatsScreen {
       </div>
       <div class="c-card">
         <div class="c-label" style="text-align:left">KUPA DOLABI</div>
-        <div class="c-stats" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="c-stats" style="grid-template-columns:1fr 1fr">
+          ${trophy('🌍', d.internationalTitles, 'DÜNYA KUPASI')}
           ${trophy('🏆', d.goldenBalls, 'ALTIN TOP')}
           ${trophy('🥇', d.topScorerTitles, 'GOL KRALI')}
           ${trophy('🇹🇷', d.nationalCaps, 'MİLLİ MAÇ')}
