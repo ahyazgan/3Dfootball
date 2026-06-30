@@ -34,6 +34,11 @@ export class PlayerStore {
     if (typeof this.data.topScorerTitles !== 'number') this.data.topScorerTitles = 0;
     if (typeof this.data.internationalTitles !== 'number') this.data.internationalTitles = 0;
     if (this.data.tournament === undefined) this.data.tournament = null;
+    if (typeof this.data.form !== 'number') {
+      this.data.form = GAME_CONFIG.career.development.form.start;
+    }
+    if (!Array.isArray(this.data.traits)) this.data.traits = [];
+    if (typeof this.data.injuryMatches !== 'number') this.data.injuryMatches = 0;
   }
 
   /** Boş varsayılan oyuncu (config.career.start'tan). */
@@ -68,6 +73,9 @@ export class PlayerStore {
       topScorerTitles: 0,
       internationalTitles: 0,
       tournament: null,
+      form: GAME_CONFIG.career.development.form.start,
+      traits: [],
+      injuryMatches: 0,
     };
   }
 
@@ -101,9 +109,22 @@ export class PlayerStore {
       0,
       100
     );
+    // Aşama 8: dinlenmek sakatlığı iyileştirir ve formu nötre çeker
+    if (this.data.injuryMatches > 0) this.data.injuryMatches -= 1;
+    this.settleForm(GAME_CONFIG.career.development.form.restToNeutral);
   }
   addMorale(n: number) {
     this.data.morale = clamp(this.data.morale + n, 0, 100);
+  }
+  addForm(n: number) {
+    this.data.form = clamp(this.data.form + n, 0, 100);
+  }
+  /** Formu nötre doğru `amount` kadar çek (zamanla normalleşme). */
+  settleForm(amount: number) {
+    const neutral = GAME_CONFIG.career.development.form.neutral;
+    const f = this.data.form;
+    if (f > neutral) this.data.form = Math.max(neutral, f - amount);
+    else if (f < neutral) this.data.form = Math.min(neutral, f + amount);
   }
 
   /** Şöhrete göre tier'ı güncelle (yalnızca yükselir). */

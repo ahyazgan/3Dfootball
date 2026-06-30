@@ -42,6 +42,9 @@ import {
   recordTournamentMatch,
   isTournamentOver,
 } from './career/Tournament';
+import { TraitsScreen } from './career/TraitsScreen';
+import { unlockTrait, traitById } from './career/Traits';
+import { updateFormFromRating, rollInjury } from './career/Development';
 import { toast } from './career/careerStyles';
 
 async function main() {
@@ -149,6 +152,17 @@ async function main() {
   const transferScreen = new TransferScreen();
   const careerStatsScreen = new CareerStatsScreen();
   const tournamentScreen = new TournamentScreen();
+  const traitsScreen = new TraitsScreen();
+
+  // Maç sonrası gelişim: form güncelle + sakatlık riski (kulüp & milli maç ortak)
+  function applyPostMatchDevelopment(store: PlayerStore, rating: number): number {
+    updateFormFromRating(store, rating);
+    const weeks = rollInjury(store.data);
+    if (weeks > 0) {
+      store.data.injuryMatches = Math.max(store.data.injuryMatches, weeks);
+    }
+    return weeks;
+  }
 
   function showMainMenu() {
     hud.setMatchUIVisible(false);
@@ -210,9 +224,36 @@ async function main() {
         careerHub.hide();
         showTournament(store);
       },
+      onTraits: () => {
+        careerHub.hide();
+        showTraits(store);
+      },
       onMenu: () => {
         careerHub.hide();
         showMainMenu();
+      },
+    });
+  }
+
+  // --- Yetenekler (Aşama 8) ---
+  function showTraits(store: PlayerStore) {
+    traitsScreen.show(store.data, {
+      onUnlock: (id) => {
+        const res = unlockTrait(store, id);
+        const t = traitById(id);
+        if (res === 'ok') {
+          careerSave.set(store.data);
+          toast(`Yetenek açıldı: ${t?.icon} ${t?.label}`);
+        } else if (res === 'broke') {
+          toast('Yetersiz para 💸');
+        } else if (res === 'locked') {
+          toast('Koşulu sağlamıyorsun 🔒');
+        }
+        showTraits(store); // güncel durumla yeniden çiz
+      },
+      onBack: () => {
+        traitsScreen.hide();
+        showHub(store);
       },
     });
   }
@@ -267,6 +308,7 @@ async function main() {
           () => {
             const outcome = computeMatchResult(plan, game.getMatchStats());
             applyOutcome(store, outcome);
+            const injuryWeeks = applyPostMatchDevelopment(store, outcome.rating);
             const res = recordTournamentMatch(store, outcome.rating);
             const fresh = checkNewAchievements(store);
             careerSave.set(store.data);
@@ -276,6 +318,8 @@ async function main() {
               if (res.champion) toast('🏆 ŞAMPİYON! Kupayı kaldırdın!');
               else if (res.advanced) toast(`Tur geçildi: ${res.roundLabel} ✓`);
               else toast('Elendin — bir dahaki turnuvada!');
+              if (injuryWeeks > 0)
+                toast(`🚑 Sakatlandın — ${injuryWeeks} dinlenme gerek`);
               fresh.forEach((a, i) =>
                 setTimeout(() => toast(`Başarım: ${a.icon} ${a.label}`), (i + 1) * 700)
               );
@@ -381,14 +425,17 @@ async function main() {
             // Maç bitti: sonucu hesapla, uygula, sezona işle, kaydet, göster
             const outcome = computeMatchResult(plan, game.getMatchStats());
             applyOutcome(store, outcome);
+            const injuryWeeks = applyPostMatchDevelopment(store, outcome.rating);
             recordMatchInSeason(store, outcome.rating);
             const fresh = checkNewAchievements(store);
             careerSave.set(store.data);
             hud.setMatchUIVisible(false);
             matchResultScreen.show(outcome, () => {
               matchResultScreen.hide();
+              if (injuryWeeks > 0)
+                toast(`🚑 Sakatlandın — ${injuryWeeks} dinlenme gerek`);
               fresh.forEach((a, i) =>
-                setTimeout(() => toast(`Başarım: ${a.icon} ${a.label}`), i * 700)
+                setTimeout(() => toast(`Başarım: ${a.icon} ${a.label}`), (i + 1) * 700)
               );
               afterMatch(store, outcome);
             });

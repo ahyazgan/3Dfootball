@@ -1,6 +1,7 @@
 import { GAME_CONFIG } from '../config';
 import type { PlayerData, CareerTier } from './types';
 import { rollEvents, sumEventEffects, type MatchEvent } from './MatchEvents';
+import { traitEffects } from './Traits';
 
 const TIER_ORDER: CareerTier[] = ['amateur', 'semipro', 'pro', 'star', 'legend'];
 
@@ -85,9 +86,25 @@ export function planMatch(
   const eff = sumEventEffects(events);
   const derbyKeeperBoost = isDerby ? 0.06 : 0;
 
-  const finalSkillBase = clamp(skillBase + eff.skillBaseDelta + derbyKeeperBoost, 0.1, 0.8);
+  // Aşama 8: form + yetenekler. Nötr form (50) ve yeteneksizken etki 0 —
+  // böylece çekirdek denge ve mevcut planMatch testleri korunur.
+  const tr = traitEffects(player);
+  const devForm = GAME_CONFIG.career.development.form;
+  // Yüksek form kaleciyi kolaylaştırır (saveReach düşer), düşük form zorlaştırır.
+  const formDelta = ((player.form - devForm.neutral) / 50) * devForm.keeperEase;
+
+  const finalMoments = clamp(
+    criticalMoments + tr.momentsBonus,
+    m.minMoments,
+    m.maxMoments + 1
+  );
+  const finalSkillBase = clamp(
+    skillBase + eff.skillBaseDelta + derbyKeeperBoost + tr.skillBaseDelta,
+    0.1,
+    0.85
+  );
   const finalSaveReach = clamp(
-    saveReach + eff.saveReachDelta + (isDerby ? 0.08 : 0),
+    saveReach + eff.saveReachDelta + (isDerby ? 0.08 : 0) + tr.saveReachDelta - formDelta,
     1.0,
     1.95
   );
@@ -95,7 +112,7 @@ export function planMatch(
   return {
     opponent,
     opponentStrength,
-    criticalMoments,
+    criticalMoments: finalMoments,
     difficultyLabel,
     skillBase: finalSkillBase,
     skillRamp: k.skillRamp,

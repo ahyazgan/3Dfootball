@@ -2,6 +2,7 @@ import { injectCareerStyles } from './careerStyles';
 import { GAME_CONFIG } from '../config';
 import { type PlayerData, TIER_LABEL, POSITION_LABEL, KIT_PALETTE } from './types';
 import { isCalledUp } from './Tournament';
+import { isInjured } from './Development';
 
 export interface HubCallbacks {
   onMatch: () => void;
@@ -11,6 +12,8 @@ export interface HubCallbacks {
   onMenu: () => void;
   /** Milli takım turnuvası (yalnızca çağrıldıysa). */
   onNational: () => void;
+  /** Yetenekler ekranı. */
+  onTraits: () => void;
 }
 
 /** Ana kariyer ekranı: durum + aksiyonlar. */
@@ -29,6 +32,7 @@ export class CareerHub {
     const money = d.money.toLocaleString('tr-TR');
     const value = d.value >= 1000 ? `${Math.round(d.value / 1000)}K €` : `${d.value} €`;
     const kit = KIT_PALETTE[d.appearance.kit];
+    const injured = isInjured(d);
 
     const stat = (k: string, v: number) =>
       `<div class="c-stat"><div class="k">${k}</div><div class="v">${v}</div>
@@ -54,6 +58,17 @@ export class CareerHub {
           <div class="c-row"><span class="c-label">MORAL</span><b>${Math.round(d.morale)}%</b></div>
           <div class="c-bar"><i style="width:${d.morale}%;background:linear-gradient(90deg,#6fb6ff,#2bd66a)"></i></div>
         </div>
+        <div>
+          <div class="c-row"><span class="c-label">FORM</span>
+            <b style="color:${d.form >= 65 ? '#2bd66a' : d.form <= 35 ? '#ff6a4d' : '#ffd24d'}">${Math.round(d.form)}%</b></div>
+          <div class="c-bar"><i style="width:${d.form}%;background:linear-gradient(90deg,#ff6a4d,#ffd24d,#2bd66a)"></i></div>
+        </div>
+        ${
+          isInjured(d)
+            ? `<div class="c-row"><span class="c-label">SAĞLIK</span>
+                <b style="color:#ff6a4d">🚑 SAKAT — ${d.injuryMatches} dinlenme</b></div>`
+            : ''
+        }
         <div class="c-stats">
           ${stat('ŞUT', d.shot)}${stat('HIZ', d.pace)}
           ${stat('TEKNİK', d.technique)}${stat('FİZİK', d.physical)}
@@ -62,21 +77,28 @@ export class CareerHub {
         ${this.trophyRow(d)}
       </div>
       <div class="c-card">
-        <button class="cbtn wide" id="h-match">SONRAKİ MAÇ ▶</button>
         ${
-          isCalledUp(d)
-            ? `<button class="cbtn wide" id="h-national" style="background:linear-gradient(180deg,#ff6a4d,#e0341f)">
-                🌍 MİLLİ TAKIM${d.tournament && !d.tournament.eliminated && !d.tournament.champion ? ' (devam)' : ''}</button>`
-            : ''
+          injured
+            ? `<button class="cbtn wide secondary" disabled style="opacity:.6">🚑 SAKATSIN — DİNLENMELİSİN</button>`
+            : `<button class="cbtn wide" id="h-match">SONRAKİ MAÇ ▶</button>
+               ${
+                 isCalledUp(d)
+                   ? `<button class="cbtn wide" id="h-national" style="background:linear-gradient(180deg,#ff6a4d,#e0341f)">
+                       🌍 MİLLİ TAKIM${d.tournament && !d.tournament.eliminated && !d.tournament.champion ? ' (devam)' : ''}</button>`
+                   : ''
+               }`
         }
         <button class="cbtn wide secondary" id="h-train">ANTRENMAN</button>
+        <button class="cbtn wide secondary" id="h-traits">YETENEKLER 🧬</button>
         <button class="cbtn wide secondary" id="h-rest">DİNLEN</button>
         <button class="cbtn wide secondary" id="h-stats">KARİYERİM 📖</button>
         <button class="cbtn wide secondary" id="h-menu">Ana Menü</button>
       </div>
     `;
-    this.root.querySelector('#h-match')!.addEventListener('click', () => cb.onMatch());
+    const matchBtn = this.root.querySelector('#h-match');
+    if (matchBtn) matchBtn.addEventListener('click', () => cb.onMatch());
     this.root.querySelector('#h-train')!.addEventListener('click', () => cb.onTrain());
+    this.root.querySelector('#h-traits')!.addEventListener('click', () => cb.onTraits());
     this.root.querySelector('#h-rest')!.addEventListener('click', () => cb.onRest());
     this.root.querySelector('#h-stats')!.addEventListener('click', () => cb.onStats());
     this.root.querySelector('#h-menu')!.addEventListener('click', () => cb.onMenu());

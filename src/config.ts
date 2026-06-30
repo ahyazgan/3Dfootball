@@ -278,6 +278,44 @@ export const GAME_CONFIG = {
       maxPerMatch: 2,
     },
 
+    /** Oyuncu gelişimi (Aşama 8): form, sakatlık, yaş eğrisi, yetenekler. */
+    development: {
+      /** Statların zirve yaptığı yaş; sonrası düşüş başlar. */
+      peakAge: 29,
+      /** Zirveden sonra her sezon her statta düşüş. */
+      declinePerYear: 2,
+      /** Form (0-100): son maçların gidişatı. */
+      form: {
+        start: 50,
+        neutral: 50,
+        /** Maç sonrası form değişimi = (rating - 6) * matchMul. */
+        matchMul: 4,
+        /** Dinlenince forma yaklaşma (nötre çekilme) miktarı. */
+        restToNeutral: 6,
+        /** Maç planına form etkisi katsayısı (yüksek form kaleciyi kolaylaştırır). */
+        keeperEase: 0.12,
+      },
+      /** Sakatlık: maç sonrası rastgele; dinlenerek iyileşir. */
+      injury: {
+        /** Taban sakatlanma olasılığı. */
+        baseChance: 0.1,
+        /** Yaş 30+ ek olasılık (yıl başına). */
+        agePenaltyPerYear: 0.01,
+        /** Enerji düşükken ek olasılık (enerji 0'da +bu). */
+        lowEnergyBonus: 0.12,
+        /** Fizik statının azalttığı olasılık (fizik 100'de -bu). */
+        physicalResist: 0.1,
+        /** Sakatlık süresi (kaç maç/dinlenme). */
+        minMatches: 1,
+        maxMatches: 3,
+      },
+      /** Yetenek kilidi açma (Yetenekler ekranı). */
+      traits: {
+        /** Her yetenek için temel maliyet çarpanı (trait.cost ile çarpılır). */
+        costMul: 1,
+      },
+    },
+
     /** Milli takım turnuvası (Aşama 7): eleme usulü uluslararası kupa. */
     tournament: {
       /** Oyuncunun milli takımı. */

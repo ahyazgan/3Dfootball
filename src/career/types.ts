@@ -58,6 +58,14 @@ export interface PlayerData {
   internationalTitles: number;
   /** Aktif turnuva durumu (yoksa null). */
   tournament: TournamentState | null;
+
+  // --- Aşama 8: gelişim ---
+  /** Form (0-100): son maçların gidişatı; maç zorluğunu etkiler. */
+  form: number;
+  /** Açılan yetenek (trait) id'leri. */
+  traits: string[];
+  /** Kalan sakatlık süresi (0 = sağlam; >0 ise maç oynanamaz). */
+  injuryMatches: number;
 }
 
 /** Eleme usulü milli takım turnuvasının serileştirilebilir durumu. */

@@ -2,6 +2,8 @@ import { GAME_CONFIG } from '../config';
 import type { PlayerStore } from './PlayerStore';
 import type { PlayerData } from './types';
 import { processSeasonEnd, type Award } from './Awards';
+import { applyAging } from './Development';
+import type { StatKey } from './Training';
 
 export interface StandingRow {
   name: string;
@@ -19,6 +21,8 @@ export interface SeasonSummary {
   retired: boolean;
   /** Bu sezon kazanılan ödüller (gol kralı, Altın Top, milli takım). */
   awards: Award[];
+  /** Yaşa bağlı düşen statlar (varsa). */
+  declinedStats?: StatKey[];
 }
 
 /** Maç reytinginden lig puanı (kazanma/beraberlik/kayıp). */
@@ -79,6 +83,7 @@ export function endSeason(
     wage,
     retired: false,
     awards: [],
+    declinedStats: [],
   };
 
   // Ödüller: sezon sayaçları sıfırlanmadan önce (summary golü taşır).
@@ -91,6 +96,8 @@ export function endSeason(
   d.seasonMatch = 0;
   d.seasonGoals = 0;
   d.clubPoints = 0;
+  // Aşama 8: zirve yaşından sonra statlar düşer
+  summary.declinedStats = applyAging(store);
   summary.retired = d.age >= s.retireAge;
 
   return summary;
