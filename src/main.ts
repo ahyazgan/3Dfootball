@@ -45,6 +45,10 @@ import {
 import { TraitsScreen } from './career/TraitsScreen';
 import { unlockTrait, traitById } from './career/Traits';
 import { updateFormFromRating, rollInjury } from './career/Development';
+import { BusinessScreen } from './career/BusinessScreen';
+import { paySponsors, updateFollowers, signSponsor, buyLifestyle } from './career/Business';
+import { PressEventScreen } from './career/PressEventScreen';
+import { rollPressEvent, applyPressChoice } from './career/PressEvents';
 import { toast } from './career/careerStyles';
 
 async function main() {
@@ -153,6 +157,8 @@ async function main() {
   const careerStatsScreen = new CareerStatsScreen();
   const tournamentScreen = new TournamentScreen();
   const traitsScreen = new TraitsScreen();
+  const businessScreen = new BusinessScreen();
+  const pressEventScreen = new PressEventScreen();
 
   // Maç sonrası gelişim: form güncelle + sakatlık riski (kulüp & milli maç ortak)
   function applyPostMatchDevelopment(store: PlayerStore, rating: number): number {
@@ -162,6 +168,57 @@ async function main() {
       store.data.injuryMatches = Math.max(store.data.injuryMatches, weeks);
     }
     return weeks;
+  }
+
+  // Maç sonrası ekonomi: sponsor geliri + takipçi kazancı (Aşama 9)
+  function applyPostMatchEconomy(store: PlayerStore, outcome: MatchOutcome) {
+    paySponsors(store);
+    updateFollowers(store, outcome);
+  }
+
+  // Maç sonrası olası basın olayı; bitince next() çağrılır
+  function maybePressEvent(store: PlayerStore, next: () => void) {
+    const ev = rollPressEvent();
+    if (!ev) {
+      next();
+      return;
+    }
+    pressEventScreen.show(ev, (choice) => {
+      applyPressChoice(store, choice);
+      careerSave.set(store.data);
+      pressEventScreen.hide();
+      toast(choice.result);
+      next();
+    });
+  }
+
+  function showBusiness(store: PlayerStore) {
+    businessScreen.show(store.data, {
+      onSign: (id) => {
+        const res = signSponsor(store, id);
+        if (res === 'ok') {
+          careerSave.set(store.data);
+          toast('Sponsorlukla imzaladın 💼');
+        } else if (res === 'full') {
+          toast('Sponsor kotan dolu');
+        }
+        showBusiness(store);
+      },
+      onBuy: (id) => {
+        const res = buyLifestyle(store, id);
+        if (res === 'ok') {
+          careerSave.set(store.data);
+          toast('Satın aldın — moral + takipçi 🎉');
+        } else if (res === 'broke') {
+          toast('Yetersiz para 💸');
+        }
+        showBusiness(store);
+      },
+      onBack: () => {
+        businessScreen.hide();
+        showHub(store);
+      },
+    });
   }
 
   function showMainMenu() {
@@ -227,6 +284,10 @@ async function main() {
       onTraits: () => {
         careerHub.hide();
         showTraits(store);
+      },
+      onBusiness: () => {
+        careerHub.hide();
+        showBusiness(store);
       },
       onMenu: () => {
         careerHub.hide();
@@ -309,6 +370,7 @@ async function main() {
             const outcome = computeMatchResult(plan, game.getMatchStats());
             applyOutcome(store, outcome);
             const injuryWeeks = applyPostMatchDevelopment(store, outcome.rating);
+            applyPostMatchEconomy(store, outcome);
             const res = recordTournamentMatch(store, outcome.rating);
             const fresh = checkNewAchievements(store);
             careerSave.set(store.data);
@@ -323,7 +385,7 @@ async function main() {
               fresh.forEach((a, i) =>
                 setTimeout(() => toast(`Başarım: ${a.icon} ${a.label}`), (i + 1) * 700)
               );
-              showTournament(store);
+              maybePressEvent(store, () => showTournament(store));
             });
           }
         );
@@ -426,6 +488,7 @@ async function main() {
             const outcome = computeMatchResult(plan, game.getMatchStats());
             applyOutcome(store, outcome);
             const injuryWeeks = applyPostMatchDevelopment(store, outcome.rating);
+            applyPostMatchEconomy(store, outcome);
             recordMatchInSeason(store, outcome.rating);
             const fresh = checkNewAchievements(store);
             careerSave.set(store.data);
@@ -437,7 +500,7 @@ async function main() {
               fresh.forEach((a, i) =>
                 setTimeout(() => toast(`Başarım: ${a.icon} ${a.label}`), (i + 1) * 700)
               );
-              afterMatch(store, outcome);
+              maybePressEvent(store, () => afterMatch(store, outcome));
             });
           }
         );

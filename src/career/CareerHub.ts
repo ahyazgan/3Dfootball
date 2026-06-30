@@ -3,6 +3,7 @@ import { GAME_CONFIG } from '../config';
 import { type PlayerData, TIER_LABEL, POSITION_LABEL, KIT_PALETTE } from './types';
 import { isCalledUp } from './Tournament';
 import { isInjured } from './Development';
+import { formatFollowers, sponsorIncome } from './Business';
 
 export interface HubCallbacks {
   onMatch: () => void;
@@ -14,6 +15,8 @@ export interface HubCallbacks {
   onNational: () => void;
   /** Yetenekler ekranı. */
   onTraits: () => void;
+  /** Menajer (sponsor + yaşam tarzı) ekranı. */
+  onBusiness: () => void;
 }
 
 /** Ana kariyer ekranı: durum + aksiyonlar. */
@@ -74,6 +77,12 @@ export class CareerHub {
           ${stat('TEKNİK', d.technique)}${stat('FİZİK', d.physical)}
         </div>
         <div class="c-row"><span class="c-label">GOL (sezon / toplam)</span><b>${d.seasonGoals} / ${d.totalGoals}</b></div>
+        <div class="c-row"><span class="c-label">TAKİPÇİ</span><b>📱 ${formatFollowers(d.followers)}</b></div>
+        ${
+          sponsorIncome(d) > 0
+            ? `<div class="c-row"><span class="c-label">SPONSOR</span><b style="color:#2bd66a">+${sponsorIncome(d).toLocaleString('tr-TR')} €/maç</b></div>`
+            : ''
+        }
         ${this.trophyRow(d)}
       </div>
       <div class="c-card">
@@ -90,6 +99,7 @@ export class CareerHub {
         }
         <button class="cbtn wide secondary" id="h-train">ANTRENMAN</button>
         <button class="cbtn wide secondary" id="h-traits">YETENEKLER 🧬</button>
+        <button class="cbtn wide secondary" id="h-business">MENAJER 💼</button>
         <button class="cbtn wide secondary" id="h-rest">DİNLEN</button>
         <button class="cbtn wide secondary" id="h-stats">KARİYERİM 📖</button>
         <button class="cbtn wide secondary" id="h-menu">Ana Menü</button>
@@ -99,6 +109,7 @@ export class CareerHub {
     if (matchBtn) matchBtn.addEventListener('click', () => cb.onMatch());
     this.root.querySelector('#h-train')!.addEventListener('click', () => cb.onTrain());
     this.root.querySelector('#h-traits')!.addEventListener('click', () => cb.onTraits());
+    this.root.querySelector('#h-business')!.addEventListener('click', () => cb.onBusiness());
     this.root.querySelector('#h-rest')!.addEventListener('click', () => cb.onRest());
     this.root.querySelector('#h-stats')!.addEventListener('click', () => cb.onStats());
     this.root.querySelector('#h-menu')!.addEventListener('click', () => cb.onMenu());

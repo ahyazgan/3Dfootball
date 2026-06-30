@@ -278,6 +278,42 @@ export const GAME_CONFIG = {
       maxPerMatch: 2,
     },
 
+    /** Yaşam & ekonomi (Aşama 9): takipçi, sponsor, yaşam tarzı, basın. */
+    business: {
+      /** Sosyal medya takipçisi. */
+      followers: {
+        start: 100,
+        base: 250, // her maç taban kazanç
+        perGoal: 1800,
+        perRatingOver5: 900,
+        /** Skandalda kaybedilen takipçi. */
+        scandalLoss: 8000,
+      },
+      /** Sponsorluklar: itibar/takipçiye göre teklifler, maç başı gelir. */
+      sponsors: {
+        maxActive: 3,
+        offerChance: 0.6,
+        brands: [
+          { id: 'localshoe', brand: 'Yerel Krampon', minReputation: 0, minFollowers: 0, perMatch: 400, signingBonus: 2000 },
+          { id: 'energydrink', brand: 'Enerji İçeceği', minReputation: 120, minFollowers: 5000, perMatch: 1500, signingBonus: 10000 },
+          { id: 'watch', brand: 'Lüks Saat', minReputation: 350, minFollowers: 60000, perMatch: 9000, signingBonus: 90000 },
+          { id: 'sportswear', brand: 'SporGiyim Global', minReputation: 500, minFollowers: 150000, perMatch: 14000, signingBonus: 150000 },
+          { id: 'megabrand', brand: 'Küresel Marka', minReputation: 800, minFollowers: 600000, perMatch: 28000, signingBonus: 300000 },
+        ],
+      },
+      /** Yaşam tarzı: parayla alınır, moral + takipçi kazandırır. */
+      lifestyle: [
+        { id: 'apartment', label: 'Şehir Dairesi', icon: '🏢', cost: 80000, morale: 6, followers: 5000 },
+        { id: 'sportscar', label: 'Spor Araba', icon: '🏎️', cost: 220000, morale: 8, followers: 25000 },
+        { id: 'villa', label: 'Lüks Villa', icon: '🏰', cost: 1200000, morale: 12, followers: 90000 },
+        { id: 'jet', label: 'Özel Jet', icon: '✈️', cost: 6000000, morale: 16, followers: 350000 },
+      ],
+      /** Basın olayları: maç sonrası seçim sunar. */
+      press: {
+        chance: 0.35,
+      },
+    },
+
     /** Oyuncu gelişimi (Aşama 8): form, sakatlık, yaş eğrisi, yetenekler. */
     development: {
       /** Statların zirve yaptığı yaş; sonrası düşüş başlar. */

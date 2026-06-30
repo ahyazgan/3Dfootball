@@ -66,6 +66,22 @@ export interface PlayerData {
   traits: string[];
   /** Kalan sakatlık süresi (0 = sağlam; >0 ise maç oynanamaz). */
   injuryMatches: number;
+
+  // --- Aşama 9: yaşam & ekonomi ---
+  /** Sosyal medya takipçisi. */
+  followers: number;
+  /** İmzalanan aktif sponsorluklar. */
+  sponsors: SponsorDeal[];
+  /** Sahip olunan yaşam tarzı öğeleri (id). */
+  lifestyle: string[];
+}
+
+/** Aktif bir sponsorluk anlaşması. */
+export interface SponsorDeal {
+  id: string;
+  brand: string;
+  /** Maç başına gelir (€). */
+  perMatch: number;
 }
 
 /** Eleme usulü milli takım turnuvasının serileştirilebilir durumu. */

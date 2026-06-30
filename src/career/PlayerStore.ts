@@ -39,6 +39,11 @@ export class PlayerStore {
     }
     if (!Array.isArray(this.data.traits)) this.data.traits = [];
     if (typeof this.data.injuryMatches !== 'number') this.data.injuryMatches = 0;
+    if (typeof this.data.followers !== 'number') {
+      this.data.followers = GAME_CONFIG.career.business.followers.start;
+    }
+    if (!Array.isArray(this.data.sponsors)) this.data.sponsors = [];
+    if (!Array.isArray(this.data.lifestyle)) this.data.lifestyle = [];
   }
 
   /** Boş varsayılan oyuncu (config.career.start'tan). */
@@ -76,6 +81,9 @@ export class PlayerStore {
       form: GAME_CONFIG.career.development.form.start,
       traits: [],
       injuryMatches: 0,
+      followers: GAME_CONFIG.career.business.followers.start,
+      sponsors: [],
+      lifestyle: [],
     };
   }
 
